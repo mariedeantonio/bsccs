@@ -18,6 +18,7 @@ using namespace std;
 
 #include "CompressedIndicatorMatrix.h"
 
+
 //#define USE_DRUG_STRING
 
 #ifdef USE_DRUG_STRING
@@ -30,7 +31,7 @@ class InputReader: public CompressedIndicatorMatrix {
 public:
 	InputReader();
 
-	InputReader(const char* fileName);
+	InputReader(const char* fileName, map<int, int> &drugIdToIndex);
 //	InputReader(const ifstream& in);
 
 	virtual ~InputReader();
@@ -44,6 +45,8 @@ public:
 	string getConditionId();
 
 	std::vector<int>* getPidVectorSTL();
+	double classHierarchyVariance;
+	double sigma2Beta;
 
 private:
 	

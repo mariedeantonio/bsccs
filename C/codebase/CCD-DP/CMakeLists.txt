@@ -5,6 +5,7 @@ set(SOURCE_FILES
 	../CCD/CyclicCoordinateDescent.cpp	
 	../CCD/CompressedIndicatorMatrix.cpp
 	../CCD/InputReader.cpp
+	../CCD/HierarchyReader.cpp
 	../CCD/AbstractDriver.cpp
 	../CCD/AbstractSelector.cpp
 	../CCD/CrossValidationSelector.cpp

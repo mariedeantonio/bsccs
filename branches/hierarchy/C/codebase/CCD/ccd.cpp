@@ -28,6 +28,8 @@
 #include "BootstrapSelector.h"
 #include "BootstrapDriver.h"
 
+#include "HierarchyReader.h"
+
 #include "tclap/CmdLine.h"
 
 #ifdef CUDA
@@ -58,6 +60,11 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 		// Prior arguments
 		ValueArg<double> hyperPriorArg("v", "variance", "Hyperprior variance", false, 1.0, "real");
 		SwitchArg normalPriorArg("n", "normalPrior", "Use normal prior, default is laplace", false);
+
+		// Hierarchy arguments by tshaddox
+		ValueArg<string> hierarchyFileArg("a", "hierarchyFile", "Hierarchy file name", false, "noFileName", "hierarchyFile");
+		ValueArg<double> classHierarchyVarianceArg("d","classHierarchyVariance","Variance for drug class hierarchy", false, 1000, "Variance at the class level of the hierarchy");
+		ValueArg<double> sigma2BetaArg("e","sigma2Beta","Variance for drug coefficients", false, 1000, "Variance at the drug level of the hierarchy (hyperprior variance)");
 
 		// Convergence criterion arguments
 		ValueArg<double> toleranceArg("t", "tolerance", "Convergence criterion tolerance", false, 1E-4, "real");
@@ -101,6 +108,11 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 		cmd.add(replicatesArg);
 		cmd.add(reportRawEstimatesArg);
 
+		//tshaddox arguments
+		cmd.add(hierarchyFileArg);
+		cmd.add(classHierarchyVarianceArg);
+		cmd.add(sigma2BetaArg);
+
 		cmd.add(inFileArg);
 		cmd.add(outFileArg);
 		cmd.parse(argc, argv);
@@ -115,6 +127,9 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 
 		arguments.inFileName = inFileArg.getValue();
 		arguments.outFileName = outFileArg.getValue();
+		arguments.hierarchyFileName = hierarchyFileArg.getValue(); //tshaddox argument
+		arguments.classHierarchyVariance = classHierarchyVarianceArg.getValue(); //tshaddox argument
+		arguments.sigma2Beta = sigma2BetaArg.getValue(); //tshaddox argument
 		arguments.tolerance = toleranceArg.getValue();
 		arguments.maxIterations = maxIterationsArg.getValue();
 		arguments.hyperprior = hyperPriorArg.getValue();
@@ -170,8 +185,10 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 double initializeModel(
 		InputReader** reader,
 		CyclicCoordinateDescent** ccd,
-		CCDArguments &arguments) {
+		CCDArguments &arguments, map<int, int> &drugIdToIndex) {
 	
+	//drugIdToIndex by tshaddox
+
 	cout << "Running CCD (" <<
 #ifdef DOUBLE_PRECISION
 	"double"
@@ -183,7 +200,12 @@ double initializeModel(
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 
-	*reader = new InputReader(arguments.inFileName.c_str());
+
+	*reader = new InputReader(arguments.inFileName.c_str(), drugIdToIndex);
+
+	(*reader)->classHierarchyVariance = arguments.classHierarchyVariance;
+	(*reader)->sigma2Beta = arguments.sigma2Beta;
+
 
 #ifdef CUDA
 	if (arguments.useGPU) {
@@ -219,6 +241,7 @@ double initializeModel(
 }
 
 double fitModel(CyclicCoordinateDescent *ccd, CCDArguments &arguments) {
+
 	cout << "Using prior: " << ccd->getPriorInfo() << endl;
 
 	struct timeval time1, time2;
@@ -259,9 +282,19 @@ double runCrossValidation(CyclicCoordinateDescent *ccd, InputReader *reader,
 	CrossValidationSelector selector(arguments.fold, reader->getPidVectorSTL(),
 			SUBJECT, arguments.seed);
 	CrossValidationDriver driver(arguments.gridSteps, arguments.lowerLimit, arguments.upperLimit);
-
+/*
 	driver.drive(*ccd, selector, arguments);
+	driver.resetForOptimal(*ccd, selector, arguments);
+	cout << "Post non-greedy Drive" << endl;
+	cout << "sigma2Beta is " << ccd->sigma2Beta << endl;
+	cout << "classHierarchyVariance is " << ccd->classHierarchyVariance << endl;
+*/
+	driver.greedyDrive(*ccd, selector, arguments);
 
+	cout << "Post Greedy Drive" << endl;
+	cout << "sigma2Beta is " << ccd->sigma2Beta << endl;
+	cout << "classHierarchyVariance is " << ccd->classHierarchyVariance << endl;
+	/*
 	gettimeofday(&time2, NULL);
 
 	driver.logResults(arguments);
@@ -272,7 +305,7 @@ double runCrossValidation(CyclicCoordinateDescent *ccd, InputReader *reader,
 		driver.resetForOptimal(*ccd, selector, arguments);
 		fitModel(ccd, arguments);
 	}
-
+	*/
 	return calculateSeconds(time1, time2);
 }
 
@@ -284,7 +317,23 @@ int main(int argc, char* argv[]) {
 
 	parseCommandLine(argc, argv, arguments);
 
-	double timeInitialize = initializeModel(&reader, &ccd, arguments);
+	std::map<int, int> drugIdToIndex;
+
+	double timeInitialize = initializeModel(&reader, &ccd, arguments, drugIdToIndex);
+
+	// By tshaddox
+
+	HierarchyReader* hierarchyReader = NULL;
+
+	if (arguments.hierarchyFileName.c_str() == "noFileName") {
+		cout << "No File!" << endl;
+	}
+
+	hierarchyReader = new HierarchyReader(arguments.hierarchyFileName.c_str(), drugIdToIndex, &ccd);
+
+	// End tshaddox code
+
+
 
 	double timeUpdate;
 	if (arguments.doCrossValidation) {

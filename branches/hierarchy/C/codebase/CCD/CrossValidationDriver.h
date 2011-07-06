@@ -29,6 +29,20 @@ public:
 			AbstractSelector& selector,
 			const CCDArguments& arguments);
 
+	void changeParameter(CyclicCoordinateDescent &ccd, int varianceIndex, double varianceValue);
+
+	double oneFoldCrossValidation(CyclicCoordinateDescent& ccd,
+			AbstractSelector& selector,
+			const CCDArguments& arguments, int i, vector<real> weights, int step, int point);
+
+	void greedyDrive(CyclicCoordinateDescent& ccd,
+			AbstractSelector& selector,
+			const CCDArguments& arguments);
+
+	void hierarchyDrive(CyclicCoordinateDescent& ccd,
+			AbstractSelector& selector,
+			const CCDArguments& arguments);
+
 	void resetForOptimal(
 			CyclicCoordinateDescent& ccd,
 			CrossValidationSelector& selector,

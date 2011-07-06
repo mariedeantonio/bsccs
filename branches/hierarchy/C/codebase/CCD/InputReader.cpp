@@ -16,6 +16,7 @@
 
 #include "InputReader.h"
 
+
 #define MAX_ENTRIES		1000000000
 
 #define FORMAT_MATCH_1	"CONDITION_CONCEPT_ID"
@@ -37,8 +38,9 @@ InputReader::InputReader() {
 	// Do nothing
 }
 
-InputReader::InputReader(const char* fileName) {
+InputReader::InputReader(const char* fileName, map<int, int> &drugIdToIndex) {
 
+	//drugIdToIndex by tshaddox
 	ifstream in(fileName);
 	if (!in) {
 		cerr << "Unable to open " << fileName << endl;
@@ -144,6 +146,7 @@ InputReader::InputReader(const char* fileName) {
 	   	columns[index] = unorderColumns[(*ii).second];
 	   	drugMap[(*ii).first] = index;
 	   	indexToDrugIdMap.insert(make_pair(index, (*ii).first));
+	   	drugIdToIndex.insert(make_pair((*ii).first, index + 1)); // this fixes a problem that arose because of the zero index
 	   	index++;
 	}
 

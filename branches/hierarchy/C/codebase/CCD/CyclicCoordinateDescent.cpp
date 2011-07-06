@@ -81,6 +81,10 @@ CyclicCoordinateDescent::CyclicCoordinateDescent(
 	K = reader->getNumberOfRows();
 	J = reader->getNumberOfColumns();
 
+	classHierarchyVariance = reader->classHierarchyVariance;
+	sigma2Beta = reader->sigma2Beta;
+
+
 	hXI = reader;
 	hEta = reader->getEtaVector();
 	hOffs = reader->getOffsetVector();
@@ -172,7 +176,7 @@ void CyclicCoordinateDescent::init() {
 
 	// Set prior
 	priorType = LAPLACE;
-	sigma2Beta = 1000;
+	//sigma2Beta = 1000;  tshaddox commented out, this is now an input parameter
 	lambda = sqrt(2.0/20.0);
 	
 	// Recode patient ids
@@ -594,6 +598,34 @@ void CyclicCoordinateDescent::computeRatiosForGradientAndHessian(int index) {
 #endif
 }
 
+// tshaddox code...
+
+double CyclicCoordinateDescent::getGradient(int drug) {
+	double t1 = 1/classHierarchyVariance; //1/(sigma2Beta*0.0001);
+	double t2 = 1/sigma2Beta; // this is the hyperparameter that is used in the original code
+	//cout << "classHierarchyVariance " << classHierarchyVariance << endl;
+	//cout << "sigma2Beta " << sigma2Beta << endl;
+	int parent = getParentMapCCD[drug];
+	vector<int> siblings = getChildMapCCD[parent];
+	int sumBetas = 0;
+	for (int i = 0; i < siblings.size(); i++) {
+		sumBetas += hBeta[siblings[i]];
+	}
+	double gradient = -t1*(hBeta[drug] - (sumBetas) / (2 + t2/t1));
+	return(-gradient);
+}
+
+double CyclicCoordinateDescent::getHessian() {
+	double t1 = 1/classHierarchyVariance; //1/(sigma2Beta*0.0001);
+	double t2 = 1/sigma2Beta; // this is the hyperparameter used in the original code
+	//cout << "classHierarchyVariance " << classHierarchyVariance << endl;
+	//cout << "sigma2Beta " << sigma2Beta << endl;
+	double hessian = t1 / (2 + t2/t1) - t1;
+	return(-hessian);
+}
+
+// tshaddox code end...
+
 double CyclicCoordinateDescent::ccdUpdateBeta(int index) {
 
 	double delta;
@@ -609,11 +641,16 @@ double CyclicCoordinateDescent::ccdUpdateBeta(int index) {
 	double g_d2;
 					
 	computeGradientAndHession(index, &g_d1, &g_d2);
-		
 	if (priorType == NORMAL) {
-		
-		delta = - (g_d1 + (hBeta[index] / sigma2Beta)) /
-				  (g_d2 + (1.0 / sigma2Beta));
+
+//		delta = - (g_d1 + (hBeta[index] / sigma2Beta)) /
+//				  (g_d2 + (1.0 / sigma2Beta));
+
+//		delta = - (g_d1 + (hBeta[index] * getGradient())) /
+//				  (g_d2 + getHessian());
+
+		delta = - (g_d1 + (getGradient(index))) /
+				  (g_d2 + getHessian());
 		
 	} else {
 					

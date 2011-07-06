@@ -91,11 +91,21 @@ public:
 
 	// Getters
 	string getPriorInfo();
-		
+
+	//tshaddox
+	double classHierarchyVariance;  //variance at class level of hierarchy
+	double sigma2Beta; //hyperprior variance (variance at drug coefficient level of hierarchy), tshaddox moved to unprotected
+
+	std::map<int, vector<int> > getChildMapCCD;
+	std::map<int, int> getParentMapCCD;
+	map<int, int> drugIdToIndexCCD;
+
 protected:
 	
 //private:
 	
+
+
 	void init(void);
 	
 	void resetBounds(void);
@@ -130,6 +140,10 @@ protected:
 	virtual void getDenominators(void);
 
 	double computeLogLikelihood(void);
+
+	double getGradient(int drug);
+
+	double getHessian();
 
 	double ccdUpdateBeta(int index);
 	
@@ -188,10 +202,11 @@ protected:
 	int K; // Number of exposure levels
 	int J; // Number of drugs
 	
+
 	string conditionId;
 
 	int priorType;
-	double sigma2Beta;
+	//double sigma2Beta; //Drug Coefficient variance
 	double lambda;
 
 	bool sufficientStatisticsKnown;

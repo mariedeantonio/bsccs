@@ -19,6 +19,9 @@ struct CCDArguments {
 	// Needed for fitting
 	std::string inFileName;
 	std::string outFileName;
+	std::string hierarchyFileName; //tshaddox
+	double classHierarchyVariance; //tshaddox
+	double sigma2Beta; //tshaddox
 	bool useGPU;
 	bool useBetterGPU;
 	int deviceNumber;
@@ -55,7 +58,7 @@ void parseCommandLine(
 double initializeModel(
 		InputReader** reader,
 		CyclicCoordinateDescent** ccd,
-		CCDArguments &arguments);
+		CCDArguments &arguments, map<int, int> &drugIdToIndex);
 
 double fitModel(
 		CyclicCoordinateDescent *ccd,

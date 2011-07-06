@@ -73,6 +73,7 @@ set(SOURCE_FILES
 	CyclicCoordinateDescent.cpp	
 	CompressedIndicatorMatrix.cpp
 	InputReader.cpp
+	HierarchyReader.cpp
 	AbstractDriver.cpp
 	AbstractSelector.cpp
 	CrossValidationSelector.cpp

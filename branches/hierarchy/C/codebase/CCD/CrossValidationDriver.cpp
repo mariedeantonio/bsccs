@@ -84,6 +84,225 @@ void CrossValidationDriver::resetForOptimal(
 	ccd.resetBeta(); // Cold-start
 }
 
+/* Author: tshaddox
+ * Helper function to translate effects in the greedy cross validation
+ * to the ccd.
+ * This can be removed/altered if implementation changes.
+ *
+ */
+
+void CrossValidationDriver::changeParameter(CyclicCoordinateDescent &ccd, int varianceIndex, double varianceValue) {
+	if (varianceIndex == 0) {
+		ccd.sigma2Beta = varianceValue;
+
+	}
+	if (varianceIndex == 1) {
+		ccd.classHierarchyVariance = varianceValue;
+	}
+}
+
+/* Author: tshaddox
+ * This performs cross validation over one fold.  This is a way of
+ * decomposing the actions of the greedy cross validation.
+ */
+
+double CrossValidationDriver::oneFoldCrossValidation(CyclicCoordinateDescent& ccd,
+		AbstractSelector& selector,
+		const CCDArguments& arguments,
+		int i, vector<real> weights,
+		int step, int point) {
+
+	int fold = i % arguments.fold;
+	if (fold == 0) {
+		selector.permute(); // Permute every full cross-validation rep
+	}
+
+
+	// Get this fold and update
+	selector.getWeights(fold, weights);
+	ccd.setWeights(&weights[0]);
+	ccd.update(arguments.maxIterations, arguments.convergenceType, arguments.tolerance);  //tshaddox temporary comment out
+
+	// Compute predictive loglikelihood for this fold
+	selector.getComplement(weights);
+	double logLikelihood = ccd.getPredictiveLogLikelihood(&weights[0]);
+	return(logLikelihood);
+
+}
+
+/* Pseudocode for the algorithm:
+	 * While the predicted log likelihood is not changing much...
+	 * 	For each element sigma2Beta_i in the vector of variances:
+	 * 		Fix all other elements in the vector of variances
+	 *		Perform cross validation along the grid points for sigma2Beta_i
+	 *		Select the value of sigma2Beta_i that produces maximal predicted log likelihood
+	 *	If the number of iterations maximal is exceeded, stop.
+	 */
+
+void CrossValidationDriver::greedyDrive(CyclicCoordinateDescent& ccd,
+		AbstractSelector& selector,
+		const CCDArguments& arguments) {
+
+	double storedMaxValue;
+	bool finished = false;
+	int count = 0;
+
+	std::vector<double> varianceVector;
+	int nVariances = 1;
+
+	//initialize variances
+	for (int i = 0; i < nVariances; i ++){
+		varianceVector.push_back(computeGridPoint(0));
+		changeParameter(ccd, i, computeGridPoint(0));
+	}
+
+	while (!finished) {
+
+		if (count > 0) {
+			finished = true;
+		}
+		// For each variance...
+		for (int varianceIndex = 0; varianceIndex < varianceVector.size(); varianceIndex++) {
+
+			std::vector<real> weights;
+			std::vector<double> points;
+			std::vector<double> values;
+
+			//Walk along the parameter to find the optimum
+			for (int step = 0; step < gridSize; step++) {
+				std::vector<double> predLogLikelihood;
+				double point = computeGridPoint(step);
+				varianceVector[varianceIndex] = point;
+				changeParameter(ccd, varianceIndex, point); //set hyperprior to "point" value
+				//Perform k fold cross validation
+				for (int i = 0; i < arguments.foldToCompute; i++) {
+					double logLikelihood = oneFoldCrossValidation(ccd, selector, arguments, i, weights, step, point);
+					predLogLikelihood.push_back(logLikelihood);
+				}
+
+				double value = computePointEstimate(predLogLikelihood) /
+						(double(arguments.foldToCompute) / double(arguments.fold));
+				points.push_back(point);
+				values.push_back(value);
+			}
+			// Report results
+			double maxPoint = points[0];
+			double maxValue = values[0];
+			for(int k = 0; k < points.size(); k++) {
+				if(values[k] > maxValue){
+					maxPoint = points[k];
+					maxValue = values[k];
+				}
+			}
+			cout << endl;
+			cout << endl;
+			cout << "Max value is " << maxValue << endl;
+			cout << "Max point is " << maxPoint << endl;
+			changeParameter(ccd, varianceIndex, maxPoint);
+			cout << endl;
+			cout << endl;
+			double testValue = storedMaxValue - maxValue;
+			if (testValue*testValue < 100) {
+				finished = true;
+			}
+			if (count + varianceIndex == 0 || maxValue > storedMaxValue){
+				storedMaxValue = maxValue;
+				cout << "---------------------  New Max = " << storedMaxValue << "-------------------" << endl;
+			}
+		}
+		count++;
+	}
+}
+
+
+void CrossValidationDriver::hierarchyDrive(CyclicCoordinateDescent& ccd,
+		AbstractSelector& selector,
+		const CCDArguments& arguments) {
+
+	std::vector<real> weights;
+	std::vector<double> outerPoints;
+	std::vector<double> innerPoints;
+	std::vector<double> outerValues;
+	for (int outerStep = 0; outerStep < gridSize; outerStep++){
+		std::vector<double> predLogLikelihoodOuter;
+		double outerPoint = computeGridPoint(outerStep);
+		ccd.classHierarchyVariance = outerPoint;
+		cout << outerStep << " out of " << gridSize << endl;
+
+		for (int step = 0; step < gridSize; step++) {
+
+			std::vector<double> predLogLikelihood;
+			double point = computeGridPoint(step);
+			ccd.setHyperprior(point);
+
+			for (int i = 0; i < arguments.foldToCompute; i++) {
+
+				int fold = i % arguments.fold;
+				if (fold == 0) {
+					selector.permute(); // Permute every full cross-validation rep
+				}
+
+				// Get this fold and update
+				selector.getWeights(fold, weights);
+				ccd.setWeights(&weights[0]);
+			//	std::cout << "Running at " << ccd.getPriorInfo() << " ";
+				ccd.update(arguments.maxIterations, arguments.convergenceType, arguments.tolerance);  //tshaddox temporary comment out
+				// Compute predictive loglikelihood for this fold
+				selector.getComplement(weights);
+				double logLikelihood = ccd.getPredictiveLogLikelihood(&weights[0]);
+/*
+				std::cout << "Grid-point #" << (step + 1) << " at " << point;
+				std::cout << "\tFold #" << (fold + 1)
+				          << " Rep #" << (i / arguments.fold + 1) << " pred log like = "
+				          << logLikelihood << std::endl;
+*/
+				// Store value
+				predLogLikelihood.push_back(logLikelihood);
+			}
+
+			double value = computePointEstimate(predLogLikelihood) /
+					(double(arguments.foldToCompute) / double(arguments.fold));
+			gridPoint.push_back(point);
+			gridValue.push_back(value);
+		}
+
+		// Report results
+		double maxPoint;
+		double maxValue;
+		findMax(&maxPoint, &maxValue);
+
+		innerPoints.push_back(maxPoint);
+		outerPoints.push_back(outerPoint);
+		outerValues.push_back(maxValue);
+/*
+		std::cout << std::endl;
+		std::cout << "Maximum predicted log likelihood (" << maxValue << ") found at:" << std::endl;
+		std::cout << "\t" << maxPoint << " (variance)" << std::endl;
+		*/
+		if (!arguments.useNormalPrior) {
+			double lambda = convertVarianceToHyperparameter(maxPoint);
+			std::cout << "\t" << lambda << " (lambda)" << std::endl;
+		}
+
+		//std:cout << std::endl;
+
+	}
+	double outerMaxPoint = outerPoints[0];
+	double innerMaxPoint = innerPoints[0];
+	double outerMaxValue = outerValues[0];
+	for (int i = 0; i < outerPoints.size(); i++) {
+		if (outerValues[i] > outerMaxValue) {
+			outerMaxValue = outerValues[i];
+			outerMaxPoint = outerPoints[i];
+			innerMaxPoint = innerPoints[i];
+		}
+	}
+	std::cout << std::endl;
+	std::cout << "Maximum predicted log likelihood (" << outerMaxValue << ") found at:" << std::endl;
+	std::cout << "\t" << innerMaxPoint << " (drug variance) and at " << outerMaxPoint << " (class variance)" << std::endl;
+
+}
+
 void CrossValidationDriver::drive(
 		CyclicCoordinateDescent& ccd,
 		AbstractSelector& selector,
@@ -110,7 +329,7 @@ void CrossValidationDriver::drive(
 			selector.getWeights(fold, weights);
 			ccd.setWeights(&weights[0]);
 			std::cout << "Running at " << ccd.getPriorInfo() << " ";
-			ccd.update(arguments.maxIterations, arguments.convergenceType, arguments.tolerance);
+			ccd.update(arguments.maxIterations, arguments.convergenceType, arguments.tolerance);  //tshaddox temporary comment out
 
 			// Compute predictive loglikelihood for this fold
 			selector.getComplement(weights);

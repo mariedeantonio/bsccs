@@ -35,7 +35,7 @@ CrossValidationSelector::CrossValidationSelector(
 	for (int i = 0; i < fold; i++) {
 		std::cout << (intervalStart[i+1] - intervalStart[i]) << " ";
 	}
-	std::cout << std::endl;
+	//std::cout << std::endl;
 
 	std::cout << "Performing " << fold << "-fold cross-validation [seed = "
 		      << seed << "]" << std::endl;

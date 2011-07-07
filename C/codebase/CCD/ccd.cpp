@@ -206,7 +206,6 @@ double initializeModel(
 	(*reader)->classHierarchyVariance = arguments.classHierarchyVariance;
 	(*reader)->sigma2Beta = arguments.sigma2Beta;
 
-
 #ifdef CUDA
 	if (arguments.useGPU) {
 		if (arguments.useBetterGPU) {
@@ -353,6 +352,7 @@ int main(int argc, char* argv[]) {
 		delete ccd;
 	if (reader)
 		delete reader;
+
 
     return 0;
 }

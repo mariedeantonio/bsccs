@@ -53,7 +53,7 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 		CmdLine cmd("Cyclic coordinate descent algorithm for self-controlled case studies", ' ', "0.1");
 		ValueArg<int> gpuArg("g","GPU","Use GPU device", false, -1, "device #");
 		SwitchArg betterGPUArg("1","better", "Use better GPU implementation", false);
-		ValueArg<int> maxIterationsArg("", "maxIterations", "Maximum iterations", false, 100, "int");
+		ValueArg<int> maxIterationsArg("", "maxIterations", "Maximum iterations", false, 100, "int"); // was 100
 		UnlabeledValueArg<string> inFileArg("inFileName","Input file name", true, "default", "inFileName");
 		UnlabeledValueArg<string> outFileArg("outFileName","Output file name", true, "default", "outFileName");
 
@@ -281,21 +281,26 @@ double runCrossValidation(CyclicCoordinateDescent *ccd, InputReader *reader,
 	CrossValidationSelector selector(arguments.fold, reader->getPidVectorSTL(),
 			SUBJECT, arguments.seed);
 	CrossValidationDriver driver(arguments.gridSteps, arguments.lowerLimit, arguments.upperLimit);
+
 /*
-	driver.drive(*ccd, selector, arguments);
+	driver.hierarchyDrive(*ccd, selector, arguments);
 	driver.resetForOptimal(*ccd, selector, arguments);
 	cout << "Post non-greedy Drive" << endl;
 	cout << "sigma2Beta is " << ccd->sigma2Beta << endl;
 	cout << "classHierarchyVariance is " << ccd->classHierarchyVariance << endl;
 */
+
+
 	driver.greedyDrive(*ccd, selector, arguments);
 
 	cout << "Post Greedy Drive" << endl;
 	cout << "sigma2Beta is " << ccd->sigma2Beta << endl;
 	cout << "classHierarchyVariance is " << ccd->classHierarchyVariance << endl;
-	/*
-	gettimeofday(&time2, NULL);
 
+
+
+	gettimeofday(&time2, NULL);
+/*
 	driver.logResults(arguments);
 
 	if (arguments.doFitAtOptimal) {
@@ -322,15 +327,22 @@ int main(int argc, char* argv[]) {
 
 	// By tshaddox
 
+
 	HierarchyReader* hierarchyReader = NULL;
 
-	if (arguments.hierarchyFileName.c_str() == "noFileName") {
-		cout << "No File!" << endl;
+	if ((arguments.hierarchyFileName).compare("noFileName") == 0) {
+		cout << "No Hierarchy File" << endl;
+		ccd->useHierarchy = false;
+	} else {
+		cout << "Using Hierarchy File " << arguments.hierarchyFileName << endl;
+		ccd->useHierarchy = true;
+		hierarchyReader = new HierarchyReader(arguments.hierarchyFileName.c_str(), drugIdToIndex, &ccd);
 	}
 
-	hierarchyReader = new HierarchyReader(arguments.hierarchyFileName.c_str(), drugIdToIndex, &ccd);
 
 	// End tshaddox code
+
+
 
 
 

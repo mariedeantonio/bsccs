@@ -95,6 +95,7 @@ public:
 	//tshaddox
 	double classHierarchyVariance;  //variance at class level of hierarchy
 	double sigma2Beta; //hyperprior variance (variance at drug coefficient level of hierarchy), tshaddox moved to unprotected
+	bool useHierarchy;
 
 	std::map<int, vector<int> > getChildMapCCD;
 	std::map<int, int> getParentMapCCD;
@@ -143,7 +144,11 @@ protected:
 
 	double getGradient(int drug);
 
-	double getHessian();
+	double getHessian(int drug);
+
+	double getGradient_lasso(int drug);
+
+	double getHessian_lasso(int drug);
 
 	double ccdUpdateBeta(int index);
 	

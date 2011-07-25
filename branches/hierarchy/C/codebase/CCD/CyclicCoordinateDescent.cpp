@@ -601,27 +601,70 @@ void CyclicCoordinateDescent::computeRatiosForGradientAndHessian(int index) {
 // tshaddox code...
 
 double CyclicCoordinateDescent::getGradient(int drug) {
-	double t1 = 1/classHierarchyVariance; //1/(sigma2Beta*0.0001);
-	double t2 = 1/sigma2Beta; // this is the hyperparameter that is used in the original code
-	//cout << "classHierarchyVariance " << classHierarchyVariance << endl;
-	//cout << "sigma2Beta " << sigma2Beta << endl;
+	double t1 = 1/sigma2Beta; // this is the hyperparameter that is used in the original code
+	double t2 = 1/classHierarchyVariance;
+	cout << "classHierarchyVariance = " << classHierarchyVariance << endl;
+	cout << "sigma2Beta = " << sigma2Beta << endl;
+
 	int parent = getParentMapCCD[drug];
 	vector<int> siblings = getChildMapCCD[parent];
-	int sumBetas = 0;
+	double sumBetas = 0;
+	cout << "drug is " << drug << endl;
+	cout << "siblings are: " << endl;
 	for (int i = 0; i < siblings.size(); i++) {
+		cout << siblings[i] << endl;
 		sumBetas += hBeta[siblings[i]];
+		cout << "hBeta[" << siblings[i] << "] = " << hBeta[siblings[i]]<< endl;
 	}
-	double gradient = -t1*(hBeta[drug] - (sumBetas) / (2 + t2/t1));
-	return(-gradient);
+	double gradient = t1*hBeta[drug] - t1*t1*sumBetas / (siblings.size()*t1 + t2);
+	return(gradient);
 }
 
-double CyclicCoordinateDescent::getHessian() {
-	double t1 = 1/classHierarchyVariance; //1/(sigma2Beta*0.0001);
-	double t2 = 1/sigma2Beta; // this is the hyperparameter used in the original code
-	//cout << "classHierarchyVariance " << classHierarchyVariance << endl;
-	//cout << "sigma2Beta " << sigma2Beta << endl;
-	double hessian = t1 / (2 + t2/t1) - t1;
-	return(-hessian);
+double CyclicCoordinateDescent::getHessian(int drug) {
+	double t1 = 1/sigma2Beta;  // this is the hyperparameter used in the original code
+	double t2 = 1/classHierarchyVariance;
+	int parent = getParentMapCCD[drug];
+	vector<int> siblings = getChildMapCCD[parent];
+	double hessian = t1 - t1 / (siblings.size() + t2/t1);
+	cout << "hessian = " << hessian << endl;
+	cout << "1/sigma2Beta = " << 1.0/sigma2Beta << endl;
+	return(hessian);
+}
+
+double CyclicCoordinateDescent::getGradient_lasso(int drug) {
+	double groupLambda = sqrt(2.0 / classHierarchyVariance);
+	double l2GroupSumSquared = 0;
+	int parent = getParentMapCCD[drug];
+	vector<int> siblings = getChildMapCCD[parent];
+	for (int i = 0; i < siblings.size(); i++) {
+		l2GroupSumSquared += hBeta[siblings[i]]*hBeta[siblings[i]];
+	}
+	double l2GroupNorm = sqrt(l2GroupSumSquared);
+	double gradient;
+	if (l2GroupNorm == 0) {
+		gradient = groupLambda*1;//sign(hBeta[drug]);
+	} else {
+		gradient = groupLambda*(sqrt(hBeta[drug]*hBeta[drug])/l2GroupNorm); //groupLambda*(hBeta[drug]/l2GroupNorm);
+	}
+	return(gradient);
+}
+
+double CyclicCoordinateDescent::getHessian_lasso(int drug) {
+	double groupLambda = sqrt(2.0 / classHierarchyVariance);
+	double l2GroupSumSquared = 0;
+	int parent = getParentMapCCD[drug];
+	vector<int> siblings = getChildMapCCD[parent];
+	for (int i = 0; i < siblings.size(); i++) {
+		l2GroupSumSquared += hBeta[siblings[i]]*hBeta[siblings[i]];
+	}
+	double l2GroupNorm = sqrt(l2GroupSumSquared);
+	double hessian;
+	if (l2GroupNorm == 0) {
+		hessian = 0;
+	} else {
+		hessian = groupLambda*(1/l2GroupNorm)*(1 - (hBeta[drug]*hBeta[drug]/l2GroupNorm));
+	}
+	return(hessian);
 }
 
 // tshaddox code end...
@@ -643,20 +686,27 @@ double CyclicCoordinateDescent::ccdUpdateBeta(int index) {
 	computeGradientAndHession(index, &g_d1, &g_d2);
 	if (priorType == NORMAL) {
 
-//		delta = - (g_d1 + (hBeta[index] / sigma2Beta)) /
-//				  (g_d2 + (1.0 / sigma2Beta));
+		if(useHierarchy) {
+			delta = - (g_d1 + (getGradient(index))) /
+					(g_d2 + getHessian(index));
+		} else {
+			delta = - (g_d1 + (hBeta[index] / sigma2Beta)) /
+				  (g_d2 + (1.0 / sigma2Beta));
+		}
 
-//		delta = - (g_d1 + (hBeta[index] * getGradient())) /
-//				  (g_d2 + getHessian());
-
-		delta = - (g_d1 + (getGradient(index))) /
-				  (g_d2 + getHessian());
 		
 	} else {
-					
-		double neg_update = - (g_d1 - lambda) / g_d2;
-		double pos_update = - (g_d1 + lambda) / g_d2;
-		
+		double neg_update;
+		double pos_update;
+
+		// tshaddox code (CHECK THIS)
+		if(useHierarchy) {
+			neg_update = - (g_d1 - lambda - getGradient_lasso(index)) /  (g_d2); //+ getHessian_lasso(index));
+			pos_update = - (g_d1 + lambda + getGradient_lasso(index)) / (g_d2); //+ getHessian_lasso(index));
+		} else {
+			neg_update = - (g_d1 - lambda) / g_d2;
+			pos_update = - (g_d1 + lambda) / g_d2;
+		}
 		int signBetaIndex = sign(hBeta[index]);
 		
 		if (signBetaIndex == 0) {
@@ -681,7 +731,7 @@ double CyclicCoordinateDescent::ccdUpdateBeta(int index) {
 			}			
 		}
 	}
-	
+	cout << "drug is " << index << " hbeta is " << hBeta[index] << " delta is " << delta << endl;
 	return delta;
 }
 

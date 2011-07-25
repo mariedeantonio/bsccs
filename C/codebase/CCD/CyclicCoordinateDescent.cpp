@@ -701,8 +701,8 @@ double CyclicCoordinateDescent::ccdUpdateBeta(int index) {
 
 		// tshaddox code (CHECK THIS)
 		if(useHierarchy) {
-			neg_update = - (g_d1 - lambda - getGradient_lasso(index)) /  (g_d2); //+ getHessian_lasso(index));
-			pos_update = - (g_d1 + lambda + getGradient_lasso(index)) / (g_d2); //+ getHessian_lasso(index));
+			neg_update = - (g_d1 - lambda - getGradient_lasso(index)) /  (g_d2 + getHessian_lasso(index));
+			pos_update = - (g_d1 + lambda + getGradient_lasso(index)) / (g_d2 + getHessian_lasso(index));
 		} else {
 			neg_update = - (g_d1 - lambda) / g_d2;
 			pos_update = - (g_d1 + lambda) / g_d2;

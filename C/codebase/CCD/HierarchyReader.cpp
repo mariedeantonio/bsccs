@@ -67,14 +67,15 @@ HierarchyReader::HierarchyReader(const char* fileName, map<int, int> &drugIdToIn
 
 			if (drugIdToIndex[child] != NULL){
 				child = drugIdToIndex[child] - 1;
-			}
-			ss >> parent; //ATC group
-			if (parent == 0) { //if not associated with a group, the group and ingredient have same id num
-				(*ccd)->getChildMapCCD[child].push_back(child);
-				(*ccd)->getParentMapCCD[child] = child;
-			} else {
-				(*ccd)->getChildMapCCD[parent].push_back(child);
-				(*ccd)->getParentMapCCD[child] = parent;
+				ss >> parent; //ATC group
+
+				if (parent == 0) { //if not associated with a group, the group and ingredient have same id num
+					(*ccd)->getChildMapCCD[child].push_back(child);
+					(*ccd)->getParentMapCCD[child] = child;
+				} else {
+					(*ccd)->getChildMapCCD[parent].push_back(child);
+					(*ccd)->getParentMapCCD[child] = parent;
+				}
 			}
 		}
 	}

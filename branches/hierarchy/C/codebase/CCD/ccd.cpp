@@ -62,9 +62,10 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 		SwitchArg normalPriorArg("n", "normalPrior", "Use normal prior, default is laplace", false);
 
 		// Hierarchy arguments by tshaddox
-		ValueArg<string> hierarchyFileArg("a", "hierarchyFile", "Hierarchy file name", false, "noFileName", "hierarchyFile");
+		ValueArg<string> hierarchyFileArg("a", "hierarchyFile", "Hierarchy file name", false, "../../hierarchyShort.txt", "hierarchyFile");
 		ValueArg<double> classHierarchyVarianceArg("d","classHierarchyVariance","Variance for drug class hierarchy", false, 1000, "Variance at the class level of the hierarchy");
 		ValueArg<double> sigma2BetaArg("e","sigma2Beta","Variance for drug coefficients", false, 1000, "Variance at the drug level of the hierarchy (hyperprior variance)");
+
 
 		// Convergence criterion arguments
 		ValueArg<double> toleranceArg("t", "tolerance", "Convergence criterion tolerance", false, 1E-4, "real");
@@ -328,6 +329,7 @@ int main(int argc, char* argv[]) {
 	// By tshaddox
 
 
+
 	HierarchyReader* hierarchyReader = NULL;
 
 	if ((arguments.hierarchyFileName).compare("noFileName") == 0) {
@@ -365,6 +367,6 @@ int main(int argc, char* argv[]) {
 	if (reader)
 		delete reader;
 
-
+	cout << "Test?" << endl;
     return 0;
 }

@@ -616,6 +616,8 @@ double CyclicCoordinateDescent::getGradient(int drug) {
 		sumBetas += hBeta[siblings[i]];
 		cout << "hBeta[" << siblings[i] << "] = " << hBeta[siblings[i]]<< endl;
 	}
+//sumBetas = 10;
+
 	double gradient = t1*hBeta[drug] - t1*t1*sumBetas / (siblings.size()*t1 + t2);
 	return(gradient);
 }
@@ -685,7 +687,7 @@ double CyclicCoordinateDescent::ccdUpdateBeta(int index) {
 					
 	computeGradientAndHession(index, &g_d1, &g_d2);
 	if (priorType == NORMAL) {
-
+		cout << "NORMAL" << endl;
 		if(useHierarchy) {
 			delta = - (g_d1 + (getGradient(index))) /
 					(g_d2 + getHessian(index));
@@ -696,6 +698,7 @@ double CyclicCoordinateDescent::ccdUpdateBeta(int index) {
 
 		
 	} else {
+		cout << "Laplacian" << endl;
 		double neg_update;
 		double pos_update;
 

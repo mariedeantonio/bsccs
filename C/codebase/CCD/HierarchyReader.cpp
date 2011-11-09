@@ -40,6 +40,7 @@ HierarchyReader::HierarchyReader() {
 
 
 HierarchyReader::HierarchyReader(const char* fileName, map<int, int> &drugIdToIndex, CyclicCoordinateDescent **ccd) {
+	cout << "fileName = " << fileName << endl;
 	ifstream in(fileName);
 	if (!in) {
 		cerr << "Unable to open " << fileName << endl;

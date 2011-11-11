@@ -62,9 +62,9 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 		SwitchArg normalPriorArg("n", "normalPrior", "Use normal prior, default is laplace", false);
 
 		// Hierarchy arguments by tshaddox
-		ValueArg<string> hierarchyFileArg("a", "hierarchyFile", "Hierarchy file name", false, "../../hierarchyShort.txt", "hierarchyFile");
-		ValueArg<double> classHierarchyVarianceArg("d","classHierarchyVariance","Variance for drug class hierarchy", false, 1000, "Variance at the class level of the hierarchy");
-		ValueArg<double> sigma2BetaArg("e","sigma2Beta","Variance for drug coefficients", false, 1000, "Variance at the drug level of the hierarchy (hyperprior variance)");
+		ValueArg<string> hierarchyFileArg("a", "hierarchyFile", "Hierarchy file name", false, "noFileName", "hierarchyFile");
+		ValueArg<double> classHierarchyVarianceArg("d","classHierarchyVariance","Variance for drug class hierarchy", false, 10, "Variance at the class level of the hierarchy");
+		ValueArg<double> sigma2BetaArg("e","sigma2Beta","Variance for drug coefficients", false, 10, "Variance at the drug level of the hierarchy (hyperprior variance)");
 
 
 		// Convergence criterion arguments
@@ -75,7 +75,7 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 		// Cross-validation arguments
 		SwitchArg doCVArg("c", "cv", "Perform cross-validation selection of hyperprior variance", false);
 		ValueArg<double> lowerCVArg("l", "lower", "Lower limit for cross-validation search", false, 1.0, "real");
-		ValueArg<double> upperCVArg("u", "upper", "Upper limit for cross-validation search", false, 10.0, "real");
+		ValueArg<double> upperCVArg("u", "upper", "Upper limit for cross-validation search", false, 100.0, "real");
 		ValueArg<int> foldCVArg("f", "fold", "Fold level for cross-validation", false, 10, "int");
 		ValueArg<int> gridCVArg("", "gridSize", "Uniform grid size for cross-validation search", false, 20, "int");
 		ValueArg<int> foldToComputeCVArg("", "computeFold", "Number of fold to iterate, default is 'fold' value", false, 10, "int");
@@ -243,6 +243,8 @@ double initializeModel(
 double fitModel(CyclicCoordinateDescent *ccd, CCDArguments &arguments) {
 
 	cout << "Using prior: " << ccd->getPriorInfo() << endl;
+	cout << "sigma2Beta = " << ccd->sigma2Beta << endl;
+	cout << "Class Hierarchy Variance = " << ccd->classHierarchyVariance << endl;
 
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -301,16 +303,16 @@ double runCrossValidation(CyclicCoordinateDescent *ccd, InputReader *reader,
 
 
 	gettimeofday(&time2, NULL);
-/*
-	driver.logResults(arguments);
+
+	//driver.logResults(arguments);  //NOT IMPLEMENTED FOR HEIRARCHY YET
 
 	if (arguments.doFitAtOptimal) {
 		std::cout << "Fitting model at optimal hyperparameter" << std::endl;
  		// Do full fit for optimal parameter
-		driver.resetForOptimal(*ccd, selector, arguments);
+		//driver.resetForOptimal(*ccd, selector, arguments);
 		fitModel(ccd, arguments);
 	}
-	*/
+
 	return calculateSeconds(time1, time2);
 }
 
@@ -327,9 +329,6 @@ int main(int argc, char* argv[]) {
 	double timeInitialize = initializeModel(&reader, &ccd, arguments, drugIdToIndex);
 
 	// By tshaddox
-
-
-
 	HierarchyReader* hierarchyReader = NULL;
 
 	if ((arguments.hierarchyFileName).compare("noFileName") == 0) {
@@ -340,11 +339,6 @@ int main(int argc, char* argv[]) {
 		ccd->useHierarchy = true;
 		hierarchyReader = new HierarchyReader(arguments.hierarchyFileName.c_str(), drugIdToIndex, &ccd);
 	}
-
-
-	// End tshaddox code
-
-
 
 
 
@@ -367,6 +361,5 @@ int main(int argc, char* argv[]) {
 	if (reader)
 		delete reader;
 
-	cout << "Test?" << endl;
     return 0;
 }

@@ -148,7 +148,7 @@ void CrossValidationDriver::greedyDrive(CyclicCoordinateDescent& ccd,
 	int count = 0;
 
 	std::vector<double> varianceVector;
-	int nVariances = 1;
+	int nVariances = 2;
 
 	//initialize variances
 	for (int i = 0; i < nVariances; i ++){
@@ -158,7 +158,7 @@ void CrossValidationDriver::greedyDrive(CyclicCoordinateDescent& ccd,
 
 	while (!finished) {
 
-		if (count > 0) {
+		if (count > 10) {
 			finished = true;
 		}
 		// For each variance...

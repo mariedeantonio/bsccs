@@ -177,7 +177,7 @@ void CyclicCoordinateDescent::init() {
 	// Set prior
 	priorType = LAPLACE;
 	//sigma2Beta = 1000;  tshaddox commented out, this is now an input parameter
-	lambda = sqrt(2.0/20.0);
+	lambda = sqrt(2.0/sigma2Beta);
 	
 	// Recode patient ids
 	int currentNewId = 0;
@@ -603,20 +603,20 @@ void CyclicCoordinateDescent::computeRatiosForGradientAndHessian(int index) {
 double CyclicCoordinateDescent::getGradient(int drug) {
 	double t1 = 1/sigma2Beta; // this is the hyperparameter that is used in the original code
 	double t2 = 1/classHierarchyVariance;
-	cout << "classHierarchyVariance = " << classHierarchyVariance << endl;
-	cout << "sigma2Beta = " << sigma2Beta << endl;
+	//cout << "classHierarchyVariance = " << classHierarchyVariance << endl;
+	//cout << "sigma2Beta = " << sigma2Beta << endl;
 
 	int parent = getParentMapCCD[drug];
 	vector<int> siblings = getChildMapCCD[parent];
 	double sumBetas = 0;
-	cout << "drug is " << drug << endl;
-	cout << "siblings are: " << endl;
+	//cout << "drug is " << drug << endl;
+	//cout << "siblings are: " << endl;
 	for (int i = 0; i < siblings.size(); i++) {
-		cout << siblings[i] << endl;
+		//cout << siblings[i] << endl;
 		sumBetas += hBeta[siblings[i]];
-		cout << "hBeta[" << siblings[i] << "] = " << hBeta[siblings[i]]<< endl;
+		//cout << "hBeta[" << siblings[i] << "] = " << hBeta[siblings[i]]<< endl;
 	}
-//sumBetas = 10;
+
 
 	double gradient = t1*hBeta[drug] - t1*t1*sumBetas / (siblings.size()*t1 + t2);
 	return(gradient);
@@ -628,8 +628,8 @@ double CyclicCoordinateDescent::getHessian(int drug) {
 	int parent = getParentMapCCD[drug];
 	vector<int> siblings = getChildMapCCD[parent];
 	double hessian = t1 - t1 / (siblings.size() + t2/t1);
-	cout << "hessian = " << hessian << endl;
-	cout << "1/sigma2Beta = " << 1.0/sigma2Beta << endl;
+	//cout << "hessian = " << hessian << endl;
+	//cout << "1/sigma2Beta = " << 1.0/sigma2Beta << endl;
 	return(hessian);
 }
 
@@ -687,7 +687,7 @@ double CyclicCoordinateDescent::ccdUpdateBeta(int index) {
 					
 	computeGradientAndHession(index, &g_d1, &g_d2);
 	if (priorType == NORMAL) {
-		cout << "NORMAL" << endl;
+		//cout << "NORMAL" << endl;
 		if(useHierarchy) {
 			delta = - (g_d1 + (getGradient(index))) /
 					(g_d2 + getHessian(index));
@@ -698,7 +698,7 @@ double CyclicCoordinateDescent::ccdUpdateBeta(int index) {
 
 		
 	} else {
-		cout << "Laplacian" << endl;
+		//cout << "Laplacian" << endl;
 		double neg_update;
 		double pos_update;
 
@@ -734,7 +734,7 @@ double CyclicCoordinateDescent::ccdUpdateBeta(int index) {
 			}			
 		}
 	}
-	cout << "drug is " << index << " hbeta is " << hBeta[index] << " delta is " << delta << endl;
+	//cout << "drug is " << index << " hbeta is " << hBeta[index] << " delta is " << delta << endl;
 	return delta;
 }
 

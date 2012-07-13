@@ -30,8 +30,6 @@ public:
 
 	virtual double getObjectiveFunction(void);
 
-	virtual bool initializeDevice(int deviceNumber);
-
 protected:
 	
 	using CyclicCoordinateDescent::hXI;

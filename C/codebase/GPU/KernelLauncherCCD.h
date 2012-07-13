@@ -28,12 +28,8 @@ private:
     GPUFunction fComputeGradientAndHessianWithReduction;
     GPUFunction fComputeGradientAndHessianWithReductionSparse;
     GPUFunction fComputeNumerator;
-#ifdef NO_FUSE
+
     GPUFunction fComputeRatio;
-    GPUFunction fComputeGradientNoFuse;
-    GPUFunction fComputeHessianNoFuse;
-#endif
-    
     GPUFunction fComputeGradientHessian;
 
     GPUFunction fSpmvCooSerial;

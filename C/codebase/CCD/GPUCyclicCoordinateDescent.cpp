@@ -7,8 +7,6 @@
 
 #include <iostream>
 #include <cmath>
-#include <exception>    // for exception, bad_exception
-#include <stdexcept>    // for std exception hierarchy
 
 #include "GPUCyclicCoordinateDescent.h"
 #include "GPU/GPUInterface.h"
@@ -19,18 +17,14 @@
 using namespace std;
 
 GPUCyclicCoordinateDescent::GPUCyclicCoordinateDescent(int deviceNumber, InputReader* reader)
-	: CyclicCoordinateDescent(reader), hReader(reader) {
+	: CyclicCoordinateDescent(reader) {
 	
 #ifdef GPU_DEBUG_FLOW
     fprintf(stderr, "\t\t\tEntering GPUCylicCoordinateDescent::constructor\n");
 #endif 	
     
 	cout << "Running GPU version" << endl;
-}
 
-bool GPUCyclicCoordinateDescent::initializeDevice(int deviceNumber) {
-
-	try {
 	gpu = new GPUInterface;
 	int gpuDeviceCount = 0;
 	if (gpu->Initialize()) {
@@ -38,12 +32,12 @@ bool GPUCyclicCoordinateDescent::initializeDevice(int deviceNumber) {
 		cout << "Number of GPU devices found: " << gpuDeviceCount << endl;
 	} else {
 		cerr << "Unable to initialize CUDA driver library!" << endl;
-		return false;
+		exit(-1);
 	}
 
 	if (deviceNumber < 0 || deviceNumber >= gpuDeviceCount) {
 		cerr << "Unknown device number: " << deviceNumber << endl;
-		return false;
+		exit(-1);
 	}
 
 	int numberChars = 80;
@@ -62,6 +56,9 @@ bool GPUCyclicCoordinateDescent::initializeDevice(int deviceNumber) {
 	kernels->LoadKernels();
 	// GPU device is already to go!
 	
+	hReader = reader;
+
+//	cerr << "Memory allocate 0" << endl;
 	size_t initial = gpu->GetAvailableMemory();
 	cerr << "Available = " << initial << endl;
 
@@ -187,6 +184,7 @@ bool GPUCyclicCoordinateDescent::initializeDevice(int deviceNumber) {
 	hGradient = (real*) malloc(2 * sizeof(real) * alignedGHCacheSize);
 	hHessian = hGradient + alignedGHCacheSize;
 
+
 //	cerr << "Memory allocate 5" << endl;
 	// Allocate computed indices for sparse matrix operations
 //	dXFullRowOffsets = gpu->AllocateIntMemory(N+1);
@@ -253,14 +251,9 @@ bool GPUCyclicCoordinateDescent::initializeDevice(int deviceNumber) {
 	//delete hReader;
 	
 	//hReader = reader; // Keep a local copy
-	} catch (std::bad_alloc) {
-		return false;
-	}
 	
 	computeRemainingStatistics(true, 0);  // TODO Check index?  Probably not right.
 	
-	return true;
-
 #ifdef GPU_DEBUG_FLOW
     fprintf(stderr, "\t\t\tLeaving GPUCylicCoordinateDescent::constructor\n");
 #endif 	
@@ -272,11 +265,9 @@ GPUCyclicCoordinateDescent::~GPUCyclicCoordinateDescent() {
 #ifdef CONTIG_MEMORY
 	gpu->FreeMemory(dXI[0]);
 #else
-	if (dXI) {
-		for (int j = 0; j < J; j++) {
-			if (hXI->getNumberOfEntries(j) > 0) {
-				gpu->FreeMemory(dXI[j]);
-			}
+	for (int j = 0; j < J; j++) {
+		if (hXI->getNumberOfEntries(j) > 0) {
+			gpu->FreeMemory(dXI[j]);
 		}
 	}
 #endif
@@ -308,25 +299,21 @@ GPUCyclicCoordinateDescent::~GPUCyclicCoordinateDescent() {
 //#endif
 
 #ifdef GPU_SPARSE_PRODUCT
-	if (dNI) {
-		gpu->FreeMemory(dNI[0]);
-	}
+	gpu->FreeMemory(dNI[0]);
 #endif
 
 
 //	cerr << "4" << endl;
-	if (dXColumnRowIndicators) {
 #ifdef CONTIG_MEMORY
-		gpu->FreeMemory(dXColumnRowIndicators[0]);
+	gpu->FreeMemory(dXColumnRowIndicators[0]);
 #else
-		for (int j = 0; j < J; j++) {
-			if (dXColumnRowIndicators[j]) {
-				gpu->FreeMemory(dXColumnRowIndicators[j]); // TODO Causing error under Linux
-			}
+	for (int j = 0; j < J; j++) {
+		if (dXColumnRowIndicators[j]) {
+			gpu->FreeMemory(dXColumnRowIndicators[j]); // TODO Causing error under Linux
 		}
+	}
 #endif
 	free(dXColumnRowIndicators);
-	}
 
 //	cerr << "5" << endl;
 //	gpu->FreeMemory(dTmpCooRows);

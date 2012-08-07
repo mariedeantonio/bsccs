@@ -77,6 +77,7 @@ set(SOURCE_FILES
 	CLRInputReader.cpp
 	RTestInputReader.cpp
 	CCTestInputReader.cpp
+	ImputeInputReader.cpp
 	AbstractModelSpecifics.cpp
 	AbstractDriver.cpp
 	AbstractSelector.cpp
@@ -84,7 +85,8 @@ set(SOURCE_FILES
 	CrossValidationSelector.cpp
 	CrossValidationDriver.cpp
 	BootstrapSelector.cpp
-	BootstrapDriver.cpp)
+	BootstrapDriver.cpp
+	ImputeVariables.cpp)
 	
 if(CUDA_FOUND)
 	set(SOURCE_FILES ${SOURCE_FILES}

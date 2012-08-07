@@ -34,6 +34,7 @@
 #include "ProportionSelector.h"
 #include "BootstrapDriver.h"
 #include "ModelSpecifics.h"
+#include "ImputeVariables.h"
 
 #include "tclap/CmdLine.h"
 
@@ -153,6 +154,8 @@ void setDefaultArguments(CCDArguments &arguments) {
 	arguments.convergenceType = GRADIENT;
 	arguments.convergenceTypeString = "gradient";
 	arguments.doPartial = false;
+	arguments.doImputation = false;
+	arguments.numberOfImputations = 5;
 }
 
 
@@ -221,6 +224,10 @@ void parseCommandLine(std::vector<std::string>& args,
 		ValuesConstraint<std::string> allowedFormatValues(allowedFormats);
 		ValueArg<string> formatArg("", "format", "Format of data file", false, arguments.fileFormat, &allowedFormatValues);
 
+		// Imputation arguments
+		SwitchArg doImputationArg("i", "imputation", "Perform multiple imputation (If this option is switched on, then all others args for doing modelling will be ignored)", arguments.doImputation);
+		ValueArg<int> numberOfImputationsArg("m", "numberOfImputations", "Number of imputed data sets (default is m=5)", false, arguments.numberOfImputations, "int");
+
 		cmd.add(gpuArg);
 //		cmd.add(betterGPUArg);
 		cmd.add(toleranceArg);
@@ -248,6 +255,8 @@ void parseCommandLine(std::vector<std::string>& args,
 		cmd.add(reportRawEstimatesArg);
 //		cmd.add(doLogisticRegressionArg);
 
+		cmd.add(doImputationArg);
+		cmd.add(numberOfImputationsArg);
 		cmd.add(inFileArg);
 		cmd.add(outFileArg);
 		cmd.parse(args);
@@ -322,6 +331,12 @@ void parseCommandLine(std::vector<std::string>& args,
 			} else {
 				arguments.reportRawEstimates = false;
 			}
+		}
+
+		// Imputation
+		arguments.doImputation = doImputationArg.isSet();
+		if(arguments.doImputation){
+			arguments.numberOfImputations = numberOfImputationsArg.getValue();
 		}
 
 		if (partialArg.getValue() != -1) {
@@ -521,49 +536,57 @@ int main(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]) {
 
-	CyclicCoordinateDescent* ccd = NULL;
-	AbstractModelSpecifics* model = NULL;
-	InputReader* reader = NULL;
 	CCDArguments arguments;
 
 	parseCommandLine(argc, argv, arguments);
 
-	double timeInitialize = initializeModel(&reader, &ccd, &model, arguments);
-
-	double timeUpdate;
-	if (arguments.doCrossValidation) {
-		timeUpdate = runCrossValidation(ccd, reader, arguments);
-	} else {
-		if (arguments.doPartial) {
-			ProportionSelector selector(arguments.replicates, reader->getPidVectorSTL(),
-					SUBJECT, arguments.seed);
-			std::vector<real> weights;
-			selector.getWeights(0, weights);
-			ccd->setWeights(&weights[0]);
-		}
-		timeUpdate = fitModel(ccd, arguments);
-	}
-
-	if (arguments.doBootstrap) {
-		// Save parameter point-estimates
-		std::vector<real> savedBeta;
-		for (int j = 0; j < ccd->getBetaSize(); ++j) {
-			savedBeta.push_back(ccd->getBeta(j));
-		}
-		timeUpdate += runBoostrap(ccd, reader, arguments, savedBeta);
-	}
+	if(!arguments.doImputation){// Proceed normally without any imputation
 		
-	cout << endl;
-	cout << "Load   duration: " << scientific << timeInitialize << endl;
-	cout << "Update duration: " << scientific << timeUpdate << endl;
-	
-	if (ccd)
-		delete ccd;
-	if (model)
-		delete model;
-	if (reader)
-		delete reader;
+		CyclicCoordinateDescent* ccd = NULL;
+		AbstractModelSpecifics* model = NULL;
+		InputReader* reader = NULL;
+		
+		double timeInitialize = initializeModel(&reader, &ccd, &model, arguments);
 
+		double timeUpdate;
+		if (arguments.doCrossValidation) {
+			timeUpdate = runCrossValidation(ccd, reader, arguments);
+		} else {
+			if (arguments.doPartial) {
+				ProportionSelector selector(arguments.replicates, reader->getPidVectorSTL(),
+					SUBJECT, arguments.seed);
+				std::vector<real> weights;
+				selector.getWeights(0, weights);
+				ccd->setWeights(&weights[0]);
+			}
+			timeUpdate = fitModel(ccd, arguments);
+		}
+
+		if (arguments.doBootstrap) {
+			// Save parameter point-estimates
+			std::vector<real> savedBeta;
+			for (int j = 0; j < ccd->getBetaSize(); ++j) {
+				savedBeta.push_back(ccd->getBeta(j));
+			}
+			timeUpdate += runBoostrap(ccd, reader, arguments, savedBeta);
+		}
+
+		cout << endl;
+		cout << "Load   duration: " << scientific << timeInitialize << endl;
+		cout << "Update duration: " << scientific << timeUpdate << endl;
+
+		if (ccd)
+			delete ccd;
+		if (model)
+			delete model;
+		if (reader)
+			delete reader;
+	}
+	else{ //Perform Imputation
+		ImputeVariables imputation;
+		imputation.initialize(arguments);
+		imputation.impute(arguments);
+	}
     return 0;
 }
 

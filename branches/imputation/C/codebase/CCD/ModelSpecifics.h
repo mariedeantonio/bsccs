@@ -34,6 +34,8 @@ protected:
 
 	double getPredictiveLogLikelihood(real* weights);
 
+	std::vector<real> getPredictiveEstimates(real* weights);
+
 	bool allocateXjY(void);
 
 	bool allocateXjX(void);
@@ -65,11 +67,11 @@ private:
 
 	struct WeightedOperation {
 		const static bool isWeighted = true;
-	} unweighted;
+	} weighted;
 
 	struct UnweightedOperation {
 		const static bool isWeighted = false;
-	} weighted;
+	} unweighted;
 
 };
 
@@ -158,6 +160,10 @@ public:
 			int* groups, int i) {
 		return ji * weighti * (xBetai - std::log(denoms[getGroup(groups, i)]));
 	}
+
+	void predictEstimate(real& yi, real xBeta){
+		//do nothing for now
+	}
 };
 
 template <typename WeightType>
@@ -213,6 +219,11 @@ public:
 			int* groups, int i) {
 		return ji * weighti * (xBetai - std::log(denoms[getGroup(groups, i)]));
 	}
+
+	void predictEstimate(real& yi, real xBeta){
+		real t = exp(xBeta);
+		yi = t/(t+1);
+	}
 };
 
 template <typename WeightType>
@@ -257,6 +268,10 @@ public:
 			int* groups, int i) {
 		return ji * weighti * (xBetai - std::log(denoms[getGroup(groups, i)]));
 	}
+
+	void predictEstimate(real& yi, real xBeta){
+		//do nothing for now
+	}
 };
 
 template <typename WeightType>
@@ -276,7 +291,7 @@ public:
 		return static_cast<int>(1);
 	}
 
-	real logLikeNumeratorContrib(int yi, real xBetai) {
+	real logLikeNumeratorContrib(real yi, real xBetai) {
 		real residual = yi - xBetai;
 		return - (residual * residual);
 	}
@@ -317,10 +332,14 @@ public:
 		return std::log(denom);
 	}
 
-	real logPredLikeContrib(int ji, real weighti, real xBetai, real* denoms,
+	real logPredLikeContrib(real ji, real weighti, real xBetai, real* denoms,
 			int* groups, int i) {
 		real residual = ji - xBetai;
 		return - (residual * residual * weighti);
+	}
+
+	void predictEstimate(real& yi, real xBeta){
+		yi = xBeta;
 	}
 };
 

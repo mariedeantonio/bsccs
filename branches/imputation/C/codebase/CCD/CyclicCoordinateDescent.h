@@ -96,6 +96,8 @@ public:
 
 	double getPredictiveLogLikelihood(real* weights);
 
+	std::vector<real> getPredictiveEstimates(real* weights);
+
 	double getLogPrior(void);
 	
 	virtual double getObjectiveFunction(int convergenceType);

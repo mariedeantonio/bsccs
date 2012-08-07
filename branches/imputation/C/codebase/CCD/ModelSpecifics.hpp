@@ -49,7 +49,7 @@ void ModelSpecifics<BaseModel,WeightType>::setWeights(real* inWeights, bool useC
 	}
 	std::fill(hNWeight.begin(), hNWeight.end(), static_cast<WeightType>(0));
 	for (int k = 0; k < K; ++k) {
-		WeightType event = BaseModel::observationCount(hY[k]);
+		WeightType event = BaseModel::observationCount(hY[k])*hKWeight[k];
 		incrementByGroup(hNWeight.data(), hPid, k, event);
 	}
 }
@@ -127,6 +127,26 @@ double ModelSpecifics<BaseModel,WeightType>::getPredictiveLogLikelihood(real* we
 	}
 
 	return static_cast<double>(logLikelihood);
+}
+
+template <class BaseModel,typename WeightType>
+std::vector<real> ModelSpecifics<BaseModel,WeightType>::getPredictiveEstimates(real* weights){
+
+	std::vector<real> y(K,0.0);
+	std::vector<real> xBeta(K,0.0);
+	for(int j = 0; j < J; j++){
+		GenericIterator it(*hXI, j);
+		for(; it; ++it){
+			const int k = it.index();
+			xBeta[k] += it.value() * hBeta[j] * weights[k];
+		}
+	}
+	for(int k = 0; k < K; k++){
+		if(weights[k]){
+			BaseModel::predictEstimate(y[k], xBeta[k]);
+		}
+	}
+	return y;
 }
 
 // TODO The following function is an example of a double-dispatch, rewrite without need for virtual function

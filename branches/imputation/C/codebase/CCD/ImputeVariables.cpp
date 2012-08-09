@@ -6,7 +6,7 @@
  */
 
 #include "ImputeVariables.h"
-
+#include <time.h>
 
 ImputeVariables::ImputeVariables(){
 	ccd = NULL;
@@ -31,14 +31,14 @@ void ImputeVariables::getComplement(vector<real>& weights){
 }
 
 void ImputeVariables::impute(CCDArguments arguments){
-	
+	srand(time(NULL));
 	vector<int> nMissingPerColumn = reader->getnMissingPerColumn();
 	vector<string> columnTypes = reader->getColumnTypesToImpute();
 	for(int i = 0; i < nImputations; i++){
 		for(int j = 0; j < (int)nMissingPerColumn.size(); j++){
 			if(nMissingPerColumn[j] > 0){
 				vector<real> weights;
-				reader->setupData(j,weights);
+				reader->setupDataForImputation(j,weights);
 				if(columnTypes[j]=="ls")	//Least Squares
 					model = new ModelSpecifics<LeastSquares<real>,real>();
 				else						//Logistic Regression
@@ -54,14 +54,35 @@ void ImputeVariables::impute(CCDArguments arguments){
 
 				ccd->update(arguments.maxIterations, arguments.convergenceType, arguments.tolerance);
 				getComplement(weights);
-				vector<real> y = ccd->getPredictiveEstimates(&weights[0]);
+				
+				ccd->getPredictiveEstimates(reader->getDataVector(j), &weights[0]);
+				
+				if(columnTypes[j]=="ls")
+					randomizeImputationsLS(reader->getDataVector(j), &weights[0], reader->getNumberOfRows());
+				else
+					randomizeImputationsLR(reader->getDataVector(j), &weights[0], reader->getNumberOfRows());
 
-				//TODO: fill data[col]->at(absententries) with y
 				if (ccd)
 					delete ccd;
 				if (model)
 					delete model;
 			}
 		}
+	}
+}
+
+void ImputeVariables::randomizeImputationsLR(real* y, real* weights, int n){
+	for(int i = 0; i < n; i++){
+		if(weights[i]){
+			if(y[i] < rand()/RAND_MAX)
+				y[i] = 0.0;
+			else
+				y[i] = 1.0;
+		}
+	}
+}
+
+void ImputeVariables::randomizeImputationsLS(real* y, real* weights, int n){
+	for(int i = 0; i < n; i++){
 	}
 }

@@ -96,7 +96,7 @@ public:
 
 	double getPredictiveLogLikelihood(real* weights);
 
-	std::vector<real> getPredictiveEstimates(real* weights);
+	void getPredictiveEstimates(real* y, real* weights);
 
 	double getLogPrior(void);
 	

@@ -18,6 +18,8 @@ public:
 	void initialize(CCDArguments arguments);
 	void getComplement(vector<real>& weights);
 	void impute(CCDArguments arguments);
+	void randomizeImputationsLR(real* y, real* weights, int n);
+	void randomizeImputationsLS(real* y, real* weights, int n);
 private:
 	CyclicCoordinateDescent*  ccd;
 	AbstractModelSpecifics* model;

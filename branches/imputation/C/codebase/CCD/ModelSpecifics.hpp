@@ -130,9 +130,8 @@ double ModelSpecifics<BaseModel,WeightType>::getPredictiveLogLikelihood(real* we
 }
 
 template <class BaseModel,typename WeightType>
-std::vector<real> ModelSpecifics<BaseModel,WeightType>::getPredictiveEstimates(real* weights){
+void ModelSpecifics<BaseModel,WeightType>::getPredictiveEstimates(real* y, real* weights){
 
-	std::vector<real> y(K,0.0);
 	std::vector<real> xBeta(K,0.0);
 	for(int j = 0; j < J; j++){
 		GenericIterator it(*hXI, j);
@@ -146,7 +145,6 @@ std::vector<real> ModelSpecifics<BaseModel,WeightType>::getPredictiveEstimates(r
 			BaseModel::predictEstimate(y[k], xBeta[k]);
 		}
 	}
-	return y;
 }
 
 // TODO The following function is an example of a double-dispatch, rewrite without need for virtual function

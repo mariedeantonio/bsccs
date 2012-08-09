@@ -160,18 +160,16 @@ void ImputeInputReader::readFile(const char* fileName) {
 
 	reindexVector(nMissingPerColumn,colIndices);
 	reindexVector(columnType,colIndices);
-	data_ = data;
+	vector<real_vector*> tempData = data;
 	vector<int_vector*> entriesAbsent_ = entriesAbsent;
 	vector<int_vector*> entriesPresent_ = entriesPresent;
 	for(int i = 0; i < nCols; i++)
 	{
-		data[i] = data_[colIndices[i]];
+		data[i] = tempData[colIndices[i]];
 		entriesPresent[i] = entriesPresent_[colIndices[i]];
 		entriesAbsent[i] = entriesAbsent_[colIndices[i]];
 	}
-
-	data_ = data;
-
+	y_ = y;
 	nevents.push_back(1); // Save last patient
 
 	int index = columns.size();
@@ -207,7 +205,7 @@ vector<int> ImputeInputReader::getnMissingPerColumn(){
 	return nMissingPerColumn;
 }
 
-void ImputeInputReader::setupData(int col, vector<real>& weights){
+void ImputeInputReader::setupDataForImputation(int col, vector<real>& weights){
 	y.clear();
 	for(int i = 0; i < nRows_; i++)
 	{
@@ -217,29 +215,24 @@ void ImputeInputReader::setupData(int col, vector<real>& weights){
 	for(int i = 0; i < (int)entriesAbsent[col]->size(); i++)
 		weights[(entriesAbsent[col])->at(i)] = 0.0;
 
-
-/*	y.clear();
-	for(int i = 0; i <= col; i++){
-		for(int j = 0; j < (int)entriesAbsent[col]->size(); j++){
-			int ind = (entriesAbsent[col])->at(j) - j;
-			data[i]->push_back(data[i]->at(ind));
-			data[i]->erase(data[i]->begin()+ind);
-		}
-	}
-	for(int j = 0; j < (int)entriesPresent[col]->size(); j++)
-			y.push_back(data[col]->at(j));
 	nCols = col;
-	nRows = (int)entriesPresent[col]->size();
-	nPatients = nRows;
-*/
-/*	
+
+/*
 	FILE* fp = fopen("Release/DATA.txt","w");
 	for(int i = 0; i < nRows; i++)
 	{
-			fprintf(fp,"%f ",y[i]);
+		for(int j = 0; j < nCols; j++)
+		{
+			fprintf(fp,"%f ",data[j]->at(i));
+		}
 		fprintf(fp,"\n");
 	}
 	fclose(fp);
 */
-	nCols = col;
+}
+
+void ImputeInputReader::resetData(){
+	y.clear();
+	nCols = nCols_ + 1;
+	y = y_;
 }

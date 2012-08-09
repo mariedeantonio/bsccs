@@ -18,14 +18,15 @@ public:
 	virtual void readFile(const char* fileName);
 	vector<string> getColumnTypesToImpute();
 	vector<int> getnMissingPerColumn();
-	void setupData(int col,vector<real>& weights);
+	void setupDataForImputation(int col,vector<real>& weights);
 	template <class T>
 	void reindexVector(vector<T>& vec, vector<int> ind);
+	void resetData();
 private:
 	vector<string> columnType;
 	vector<int> nMissingPerColumn;
 	vector<int> colIndices;
-	vector<real_vector*> data_;
+	vector<real> y_;
 	vector<int_vector*> entriesAbsent;
 	vector<int_vector*> entriesPresent;
 

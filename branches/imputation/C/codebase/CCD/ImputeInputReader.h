@@ -22,6 +22,8 @@ public:
 	template <class T>
 	void reindexVector(vector<T>& vec, vector<int> ind);
 	void resetData();
+	void getSampleMeanVariance(int col, real* Xmean, real* Xvar);
+	real* getDataRow(int row, real* x);
 private:
 	vector<string> columnType;
 	vector<int> nMissingPerColumn;

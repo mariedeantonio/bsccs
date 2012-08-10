@@ -236,3 +236,25 @@ void ImputeInputReader::resetData(){
 	nCols = nCols_ + 1;
 	y = y_;
 }
+
+void ImputeInputReader::getSampleMeanVariance(int col, real* Xmean, real* Xvar){
+	for(int j = 0; j < col; j++){
+		real sumx2 = 0.0;
+		real sumx = 0.0;
+		int n = (int)entriesPresent[col]->size();
+		for(int i = 0; i < n; i++){
+			real xi = data[j]->at((int)entriesPresent[col]->at(i));
+			sumx2 += xi * xi;
+			sumx += xi;
+		}
+		Xmean[j] = sumx/n;
+		Xvar[j] =  (sumx2 - Xmean[j]*Xmean[j]*n)/(n-1);
+	}
+}
+
+real* ImputeInputReader::getDataRow(int row, real* x){
+	for(int j = 0; j < nCols; j++)
+		x[j] = data[j]->at(row);
+
+	return x;
+}

@@ -8,6 +8,44 @@
 #include "ImputeVariables.h"
 #include <time.h>
 
+double randn_notrig(double mu=0.0, double sigma=1.0) {
+	static bool deviateAvailable=false;        //        flag
+	static float storedDeviate;                        //        deviate from previous calculation
+	double polar, rsquared, var1, var2;
+
+	//        If no deviate has been stored, the polar Box-Muller transformation is
+	//        performed, producing two independent normally-distributed random
+	//        deviates.  One is stored for the next round, and one is returned.
+	if (!deviateAvailable) {
+
+		//        choose pairs of uniformly distributed deviates, discarding those
+		//        that don't fall within the unit circle
+		do {
+			var1=2.0*( double(rand())/double(RAND_MAX) ) - 1.0;
+			var2=2.0*( double(rand())/double(RAND_MAX) ) - 1.0;
+			rsquared=var1*var1+var2*var2;
+		} while ( rsquared>=1.0 || rsquared == 0.0);
+
+		//        calculate polar tranformation for each deviate
+		polar=sqrt(-2.0*log(rsquared)/rsquared);
+
+		//        store first deviate and set flag
+		storedDeviate=var1*polar;
+		deviateAvailable=true;
+
+		//        return second deviate
+		return var2*polar*sigma + mu;
+	}
+
+	//        If a deviate is available from a previous call to this function, it is
+	//        returned, and the flag is set to false.
+	else {
+		deviateAvailable=false;
+		return storedDeviate*sigma + mu;
+	}
+}
+
+
 ImputeVariables::ImputeVariables(){
 	ccd = NULL;
 	model = NULL;
@@ -31,9 +69,12 @@ void ImputeVariables::getComplement(vector<real>& weights){
 }
 
 void ImputeVariables::impute(CCDArguments arguments){
+	
 	srand(time(NULL));
+	
 	vector<int> nMissingPerColumn = reader->getnMissingPerColumn();
 	vector<string> columnTypes = reader->getColumnTypesToImpute();
+	
 	for(int i = 0; i < nImputations; i++){
 		for(int j = 0; j < (int)nMissingPerColumn.size(); j++){
 			if(nMissingPerColumn[j] > 0){
@@ -55,12 +96,16 @@ void ImputeVariables::impute(CCDArguments arguments){
 				ccd->update(arguments.maxIterations, arguments.convergenceType, arguments.tolerance);
 				getComplement(weights);
 				
-				ccd->getPredictiveEstimates(reader->getDataVector(j), &weights[0]);
+				int nRows = reader->getNumberOfRows();
+				vector<real> yPred(nRows);
+				vector<real> allOnes(nRows,1.0);
+
+				ccd->getPredictiveEstimates(&yPred[0], &allOnes[0]);
 				
 				if(columnTypes[j]=="ls")
-					randomizeImputationsLS(reader->getDataVector(j), &weights[0], reader->getNumberOfRows());
+					randomizeImputationsLS(&yPred[0], &weights[0], j);
 				else
-					randomizeImputationsLR(reader->getDataVector(j), &weights[0], reader->getNumberOfRows());
+					randomizeImputationsLR(&yPred[0], &weights[0], j);
 
 				if (ccd)
 					delete ccd;
@@ -71,18 +116,51 @@ void ImputeVariables::impute(CCDArguments arguments){
 	}
 }
 
-void ImputeVariables::randomizeImputationsLR(real* y, real* weights, int n){
-	for(int i = 0; i < n; i++){
+void ImputeVariables::randomizeImputationsLR(real* yPred, real* weights, int col){
+	real* y = reader->getDataVector(col);
+	for(int i = 0; i < reader->getNumberOfRows(); i++){
 		if(weights[i]){
-			if(y[i] < rand()/RAND_MAX)
-				y[i] = 0.0;
-			else
+			if(yPred[i] < rand()/RAND_MAX)
 				y[i] = 1.0;
+			else
+				y[i] = 0.0;
 		}
 	}
 }
 
-void ImputeVariables::randomizeImputationsLS(real* y, real* weights, int n){
-	for(int i = 0; i < n; i++){
+void ImputeVariables::randomizeImputationsLS(real* yPred, real* weights, int col){
+	
+	int n = 0;
+	vector<real> xMean(col);
+	vector<real> xVar(col);
+	
+	int nRows = reader->getNumberOfRows();
+	vector<real> dist(nRows,0.0);
+
+	reader->getSampleMeanVariance(col,&xMean[0],&xVar[0]);
+	real* y = reader->getDataVector(col);
+
+	real sigma = 0.0;
+	for(int i = 0; i < nRows; i++){
+		if(!weights[i]){
+			sigma += (y[i] - yPred[i]) * (y[i] - yPred[i]);
+			n++;
+		}
+		else{
+			vector<real> x(col);
+			reader->getDataRow(i,&x[0]);
+			for(int j = 0; j < col; j++){
+				if(xVar[j] > 1e-10)
+					dist[i] += (x[j] - xMean[j]) * (x[j] - xMean[j]) / xVar[j] ;
+			}
+		}
+	}
+	sigma = sigma/(n-2);
+
+	for(int i = 0; i < nRows; i++){
+		if(weights[i]){
+			double predInterval = 1.96 * sigma * sqrt(1 + 1/n + dist[i]/(n-1));
+			y[i] = randn_notrig(yPred[i],predInterval);
+		}
 	}
 }

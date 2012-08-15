@@ -221,6 +221,7 @@ void parseCommandLine(std::vector<std::string>& args,
 		allowedFormats.push_back("clr");
 		allowedFormats.push_back("csv");
 		allowedFormats.push_back("cc");
+		allowedFormats.push_back("bbr");
 		ValuesConstraint<std::string> allowedFormatValues(allowedFormats);
 		ValueArg<string> formatArg("", "format", "Format of data file", false, arguments.fileFormat, &allowedFormatValues);
 

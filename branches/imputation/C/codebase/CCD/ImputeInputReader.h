@@ -10,21 +10,37 @@
 
 #include "InputReader.h"
 
+class Compare{
+	vector<int>& _vec;
+public:
+	Compare(vector<int>& vec) : _vec(vec) {}
+	bool operator()(size_t i, size_t j){
+		return _vec[i] < _vec[j];
+	}
+};
+
 class ImputeInputReader : public InputReader {
 public:
 	ImputeInputReader();
 	virtual ~ImputeInputReader();
 
-	virtual void readFile(const char* fileName);
+	virtual void readFile(const char* fileName) = 0;
+	void sortColumns();
 	vector<string> getColumnTypesToImpute();
 	vector<int> getnMissingPerColumn();
 	void setupDataForImputation(int col,vector<real>& weights);
-	template <class T>
-	void reindexVector(vector<T>& vec, vector<int> ind);
+	template <class T> void reindexVector(vector<T>& vec, vector<int> ind) {
+		int n = (int) vec.size();
+		vector<T> temp = vec;
+		for(int i = 0; i < n; i++){
+			vec[i] = temp[ind[i]];
+		}
+	}
 	void resetData();
 	void getSampleMeanVariance(int col, real* Xmean, real* Xvar);
 	real* getDataRow(int row, real* x);
-private:
+	void updateColumnVector(int col, vector<int> appendY);
+protected:
 	vector<string> columnType;
 	vector<int> nMissingPerColumn;
 	vector<int> colIndices;
@@ -32,7 +48,6 @@ private:
 	vector<int_vector*> entriesAbsent;
 	vector<int_vector*> entriesPresent;
 
-	int nPatients_;
 	int nCols_;
 	int nRows_;
 };

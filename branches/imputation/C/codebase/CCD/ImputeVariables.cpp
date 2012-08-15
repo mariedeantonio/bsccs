@@ -6,6 +6,8 @@
  */
 
 #include "ImputeVariables.h"
+#include "CSVImputeInputReader.h"
+#include "BBRImputeInputReader.h"
 #include <time.h>
 
 double randn_notrig(double mu=0.0, double sigma=1.0) {
@@ -58,8 +60,19 @@ ImputeVariables::~ImputeVariables(){
 
 void ImputeVariables::initialize(CCDArguments arguments){
 	nImputations = arguments.numberOfImputations;
-	reader = new ImputeInputReader();
+	if(arguments.fileFormat == "csv"){
+		reader = new CSVImputeInputReader();
+	}
+	else if(arguments.fileFormat == "bbr"){
+		reader = new BBRImputeInputReader();
+	}
+	else{
+		cerr << "Invalid file format." << endl;
+		exit(-1);
+	}
+
 	reader->readFile(arguments.inFileName.c_str());
+	reader->sortColumns();
 }
 
 void ImputeVariables::getComplement(vector<real>& weights){
@@ -106,6 +119,29 @@ void ImputeVariables::impute(CCDArguments arguments){
 					randomizeImputationsLS(&yPred[0], &weights[0], j);
 				else
 					randomizeImputationsLR(&yPred[0], &weights[0], j);
+/*
+				real* y;
+				int* z;
+				vector<int> zz(reader->getNumberOfRows(),0);
+				if(reader->getFormatType(j) == DENSE)
+					y = reader->getDataVector(j);
+				else{
+					z = reader->getCompressedColumnVector(j);
+					for(int ii = 0; ii < reader->getNumberOfEntries(j); ii++)
+						zz[z[ii]] = 1;
+				}
+
+				char fname[100];
+				sprintf(fname,"Release/DATA_%d.txt",i);
+				FILE* fp = fopen(fname,"a");
+				for(int ii = 0; ii < reader->getNumberOfRows(); ii++)
+					if(reader->getFormatType(j) == DENSE)
+						fprintf(fp,"%f ",y[ii]);
+					else
+						fprintf(fp,"%d ",zz[ii]);
+				fprintf(fp,"\n");
+				fclose(fp);
+*/
 
 				if (ccd)
 					delete ccd;
@@ -113,17 +149,33 @@ void ImputeVariables::impute(CCDArguments arguments){
 					delete model;
 			}
 		}
+		reader->resetData();
 	}
 }
 
 void ImputeVariables::randomizeImputationsLR(real* yPred, real* weights, int col){
-	real* y = reader->getDataVector(col);
-	for(int i = 0; i < reader->getNumberOfRows(); i++){
-		if(weights[i]){
-			if(yPred[i] < rand()/RAND_MAX)
-				y[i] = 1.0;
-			else
-				y[i] = 0.0;
+	if(reader->getFormatType(col) == INDICATOR){
+		int nRows = reader->getNumberOfRows();
+		vector<int> y;
+		for(int i = 0; i < nRows; i++){
+			if(weights[i]){
+				real r = (real)rand()/RAND_MAX;
+				if(yPred[i] < r)
+					y.push_back(i);
+			}
+		}
+		reader->updateColumnVector(col,y);
+	}
+	else{
+		real* y = reader->getDataVector(col);
+		for(int i = 0; i < reader->getNumberOfRows(); i++){
+			if(weights[i]){
+				real r = (real)rand()/RAND_MAX;
+				if(yPred[i] < r)
+					y[i] = 1.0;
+				else
+					y[i] = 0.0;
+			}
 		}
 	}
 }
@@ -161,6 +213,7 @@ void ImputeVariables::randomizeImputationsLS(real* yPred, real* weights, int col
 		if(weights[i]){
 			double predInterval = 1.96 * sigma * sqrt(1 + 1/n + dist[i]/(n-1));
 			y[i] = randn_notrig(yPred[i],predInterval);
+//			y[i] = yPred[i];
 		}
 	}
 }

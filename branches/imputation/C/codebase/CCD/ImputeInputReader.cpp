@@ -39,164 +39,47 @@ ImputeInputReader::~ImputeInputReader() { }
  * Assumes that file is sorted by 'Stratum'
  */
 
-class Compare{
-	vector<int>& _vec;
-public:
-	Compare(vector<int>& vec) : _vec(vec) {}
-	bool operator()(size_t i, size_t j){
-		return _vec[i] < _vec[j];
-	}
-};
-
-template <class T>
-void ImputeInputReader::reindexVector(vector<T>& vec, vector<int> ind){
-	int n = (int) vec.size();
-	vector<T> temp = vec;
-	for(int i = 0; i < n; i++){
-		vec[i] = temp[ind[i]];
-	}
-}
-
-void ImputeInputReader::readFile(const char* fileName) {
-	ifstream in(fileName);
-	if (!in) {
-		cerr << "Unable to open " << fileName << endl;
-		exit(-1);
-	}
-
-	string line;
-	getline(in, line); // Read header and ignore
-
-	int numCases = 0;
-	int numCovariates = MISSING_LENGTH;
-	string currentStratum = MISSING_STRING;
-	int numEvents = 0;
-
-	vector<string> strVector;
-	string outerDelimiter(DELIMITER);
-
-	int currentRow = 0;
-	while (getline(in, line) && (currentRow < MAX_ENTRIES)) {
-		if (!line.empty()) {
-
-			strVector.clear();
-			split(strVector, line, outerDelimiter);
-
-			// Make columns
-			if (numCovariates == MISSING_LENGTH) {
-				numCovariates = strVector.size() - 2;
-				for (int i = 0; i < numCovariates; ++i) {
-					real_vector* thisColumn = new real_vector();
-					push_back(NULL, thisColumn, DENSE);
-					int_vector* nullVector1 = new int_vector();
-					int_vector* nullVector2 = new int_vector();
-					entriesPresent.push_back(nullVector1);
-					entriesAbsent.push_back(nullVector2);
-				}
-				nMissingPerColumn.resize(numCovariates,0);
-				columnType.resize(numCovariates);
-			} else if (numCovariates != strVector.size() - 2) {
-				cerr << "All rows must be the same length" << endl;
-				exit(-1);
-			}
-
-			// Parse stratum (pid)
-			string unmappedStratum = strVector[0];
-			if (unmappedStratum != currentStratum) { // New stratum, ASSUMES these are sorted
-				if (currentStratum != MISSING_STRING) { // Skip first switch
-					nevents.push_back(1);
-					numEvents = 0;
-				}
-				currentStratum = unmappedStratum;
-				numCases++;
-			}
-			pid.push_back(numCases - 1);
-
-			// Parse outcome entry
-//			real thisY;
-//			stringstream(strVector[1]) >> thisY;
-			real thisY = static_cast<real>(atof(strVector[1].c_str()));
- 			numEvents += thisY;
-			y.push_back(thisY);
-
-			// Fix offs for CLR
-			offs.push_back(1);
-
-			// Parse covariates
-			for (int i = 0; i < numCovariates; ++i) {
-//				real value;
-//				istringstream(strVector[2 + i]) >> value;
-				if(strVector[2 + i] == "NA"){
-					data[i]->push_back(0);
-					entriesAbsent[i]->push_back(currentRow);
-						nMissingPerColumn[i]++;
-				}
-				else{
-					real value = static_cast<real>(atof(strVector[2 + i].c_str()));
-					data[i]->push_back(value);
-					entriesPresent[i]->push_back(currentRow);
-					if(value == 1.0 || value == 0.0)
-						columnType[i] = "lr";
-					else
-						columnType[i] = "ls";
-				}
-			}
-			currentRow++;
+template <class InputIterator1, class InputIterator2>
+int set_intersection(InputIterator1 first1, InputIterator1 last1,
+	InputIterator2 first2, InputIterator2 last2)
+{
+	int result = 0;
+	while (first1!=last1 && first2!=last2)
+	{
+		if(*first1 < *first2) 
+			++first1;
+		else if(*first2 < *first1) 
+			++first2;
+		else{ 
+			result++;
+			first1++; 
+			first2++; 
 		}
 	}
+	return result;
+}
 
-	nPatients = numCases;
-	nCols = columns.size();
-	nRows = currentRow;
-	conditionId = "0";
-
-	nPatients_ = numCases;
-	nCols_ = columns.size();
-	nRows_ = currentRow;
-
-	for(int i = 0; i < numCovariates; i++)
+void ImputeInputReader::sortColumns(){
+	for(int i = 0; i < nCols; i++)
 		colIndices.push_back(i);
 	sort(colIndices.begin(),colIndices.end(),Compare(nMissingPerColumn));
 
 	reindexVector(nMissingPerColumn,colIndices);
 	reindexVector(columnType,colIndices);
+	reindexVector(formatType,colIndices);
+
 	vector<real_vector*> tempData = data;
+	vector<int_vector*> colData = columns;
 	vector<int_vector*> entriesAbsent_ = entriesAbsent;
 	vector<int_vector*> entriesPresent_ = entriesPresent;
 	for(int i = 0; i < nCols; i++)
 	{
 		data[i] = tempData[colIndices[i]];
+		columns[i] = colData[colIndices[i]];
 		entriesPresent[i] = entriesPresent_[colIndices[i]];
 		entriesAbsent[i] = entriesAbsent_[colIndices[i]];
 	}
-	y_ = y;
-	nevents.push_back(1); // Save last patient
-
-	int index = columns.size();
-
-#ifndef MY_RCPP_FLAG
-	cout << "ImputeInputReader" << endl;
-	cout << "Read " << currentRow << " data lines from " << fileName << endl;
-	cout << "Number of stratum: " << numCases << endl;
-	cout << "Number of covariates: " << numCovariates << endl;
-#endif
-
-#if 0
-	for (int i = 0; i < nCols; ++i) {
-		printColumn(i);
-	}
-
-	cerr << "PIDs ";
-	printVector(&(pid[0]), static_cast<int>(pid.size()));
-
-	cerr << "Ys ";
-	printVector(eta.data(), eta.size());
-
-	cerr << "nEvents ";
-	printVector(nevents.data(), nevents.size());
-#endif
 }
-
 vector<string> ImputeInputReader::getColumnTypesToImpute(){
 	return columnType;
 }
@@ -207,10 +90,16 @@ vector<int> ImputeInputReader::getnMissingPerColumn(){
 
 void ImputeInputReader::setupDataForImputation(int col, vector<real>& weights){
 	y.clear();
-	for(int i = 0; i < nRows_; i++)
-	{
-		weights.push_back(1.0);
-		y.push_back(data[col]->at(i));
+	weights.clear();
+	y.resize(nRows_,0.0);
+	weights.resize(nRows_,1.0);
+	if(formatType[col] == DENSE){
+		for(int i = 0; i < nRows_; i++)
+			y[i] = data[col]->at(i);
+	}
+	else{
+		for(int i = 0; i < (int)columns[col]->size(); i++)
+			y[(int)columns[col]->at(i)] = 1.0;
 	}
 	for(int i = 0; i < (int)entriesAbsent[col]->size(); i++)
 		weights[(entriesAbsent[col])->at(i)] = 0.0;
@@ -235,6 +124,31 @@ void ImputeInputReader::resetData(){
 	y.clear();
 	nCols = nCols_ + 1;
 	y = y_;
+
+	for(int j = 0; j < nCols; j++){
+		if(formatType[j] == INDICATOR){
+			int lastit = 0;
+			vector<int>::iterator it1 = entriesPresent[j]->begin();
+			vector<int>::iterator it2 = columns[j]->begin();
+			while(it1 < entriesPresent[j]->end() && it2 < columns[j]->end()){
+				if(*it1 < *it2)
+					it1++;
+				else if(*it2 < *it1){
+					columns[j]->erase(it2);
+					it2 = columns[j]->begin() + lastit;
+				}
+				else{
+					it1++;
+					it2++;
+					lastit++;
+				}
+			}
+			while(it2 < columns[j]->end()){
+				columns[j]->erase(it2);
+				it2 = columns[j]->begin() + lastit;
+			}
+		}
+	}
 }
 
 void ImputeInputReader::getSampleMeanVariance(int col, real* Xmean, real* Xvar){
@@ -242,10 +156,18 @@ void ImputeInputReader::getSampleMeanVariance(int col, real* Xmean, real* Xvar){
 		real sumx2 = 0.0;
 		real sumx = 0.0;
 		int n = (int)entriesPresent[col]->size();
-		for(int i = 0; i < n; i++){
-			real xi = data[j]->at((int)entriesPresent[col]->at(i));
-			sumx2 += xi * xi;
-			sumx += xi;
+		if(formatType[j] == DENSE){
+			for(int i = 0; i < n; i++){
+				real xi;
+				xi = data[j]->at(entriesPresent[col]->at(i));
+				sumx2 += xi * xi;
+				sumx += xi;
+			}
+		}
+		else{
+			sumx = set_intersection(entriesPresent[col]->begin(), entriesPresent[col]->end(), 
+				columns[j]->begin(),columns[j]->end());
+			sumx2 = sumx;
 		}
 		Xmean[j] = sumx/n;
 		Xvar[j] =  (sumx2 - Xmean[j]*Xmean[j]*n)/(n-1);
@@ -254,7 +176,36 @@ void ImputeInputReader::getSampleMeanVariance(int col, real* Xmean, real* Xvar){
 
 real* ImputeInputReader::getDataRow(int row, real* x){
 	for(int j = 0; j < nCols; j++)
-		x[j] = data[j]->at(row);
+	{
+		if(formatType[j] == DENSE)
+			x[j] = data[j]->at(row);
+		else{
+			x[j] = 0.0;
+			for(int i = 0; i < (int)columns[j]->size(); i++){
+				if(columns[j]->at(i) == row){
+					x[j] = 1.0;
+					break;
+				}
+				else if(columns[j]->at(i) > row)
+					break;
+			}
+		}
+
+	}
 
 	return x;
+}
+
+void ImputeInputReader::updateColumnVector(int col, vector<int> appendY){
+	int lastit = 0;
+	int p = columns[col]->size() + appendY.size();
+	for(int i = 0; i < (int)appendY.size(); i++)
+	{
+		vector<int>::iterator it = columns[col]->begin() + lastit;
+		while(*it < appendY[i]){
+			it++;
+			lastit++;
+		}
+		columns[col]->insert(it,appendY[i]);
+	}
 }

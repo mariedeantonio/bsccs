@@ -78,6 +78,8 @@ set(SOURCE_FILES
 	RTestInputReader.cpp
 	CCTestInputReader.cpp
 	ImputeInputReader.cpp
+	CSVImputeInputReader.cpp
+	BBRImputeInputReader.cpp
 	AbstractModelSpecifics.cpp
 	AbstractDriver.cpp
 	AbstractSelector.cpp

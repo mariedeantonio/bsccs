@@ -1,7 +1,7 @@
 /*
  * ImputeInputReader.cpp
  *
- *  Created on: Jul 28, 2012
+ *  Created on: Aug 13, 2012
  *      Author: Sushil Mittal
  */
 
@@ -25,7 +25,7 @@
 #define MISSING_STRING_1	"NA"
 #define MISSING_STRING_2	"NULL"
 #define MISSING_LENGTH	-1
-#define DELIMITER		","
+#define DELIMITER		" "
 
 using namespace std;
 
@@ -40,8 +40,8 @@ BBRImputeInputReader::~BBRImputeInputReader() { }
  * Assumes that file is sorted by 'Stratum'
  */
 
-/*
 void BBRImputeInputReader::readFile(const char* fileName) {
+
 	ifstream in(fileName);
 	if (!in) {
 		cerr << "Unable to open " << fileName << endl;
@@ -49,81 +49,128 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 	}
 
 	string line;
-	getline(in, line); // Read header and ignore
+//	getline(in, line); // Read header and ignore
 
 	int numCases = 0;
-	int numCovariates = MISSING_LENGTH;
-	string currentStratum = MISSING_STRING;
-	int numEvents = 0;
-
 	vector<string> strVector;
 	string outerDelimiter(DELIMITER);
 
+	// Allocate a column for intercept
+	real_vector* thisColumn = new real_vector();
+	push_back(NULL, thisColumn, INDICATOR);
+	int_vector* nullVector1 = new int_vector();
+	int_vector* nullVector2 = new int_vector();
+	entriesPresent.push_back(nullVector1);
+	entriesAbsent.push_back(nullVector2);
+	columnType.push_back("lr");
+	nMissingPerColumn.push_back(0);
+	drugMap.insert(make_pair(0,0));
+	indexToDrugIdMap.insert(make_pair(0,0));
+
 	int currentRow = 0;
+	int maxCol = 0;
 	while (getline(in, line) && (currentRow < MAX_ENTRIES)) {
 		if (!line.empty()) {
 
 			strVector.clear();
 			split(strVector, line, outerDelimiter);
 
-			// Make columns
-			if (numCovariates == MISSING_LENGTH) {
-				numCovariates = strVector.size() - 2;
-				for (int i = 0; i < numCovariates; ++i) {
-					real_vector* thisColumn = new real_vector();
-					push_back(NULL, thisColumn, DENSE);
-					int_vector* nullVector1 = new int_vector();
-					int_vector* nullVector2 = new int_vector();
-					entriesPresent.push_back(nullVector1);
-					entriesAbsent.push_back(nullVector2);
-				}
-				nMissingPerColumn.resize(numCovariates,0);
-				columnType.resize(numCovariates);
-			} else if (numCovariates != strVector.size() - 2) {
-				cerr << "All rows must be the same length" << endl;
-				exit(-1);
-			}
-
-			// Parse stratum (pid)
-			string unmappedStratum = strVector[0];
-			if (unmappedStratum != currentStratum) { // New stratum, ASSUMES these are sorted
-				if (currentStratum != MISSING_STRING) { // Skip first switch
-					nevents.push_back(1);
-					numEvents = 0;
-				}
-				currentStratum = unmappedStratum;
-				numCases++;
-			}
+			nevents.push_back(1);
+			numCases++;
 			pid.push_back(numCases - 1);
 
+			vector<string> thisCovariate;
+			split(thisCovariate, strVector[0], ":");
+
 			// Parse outcome entry
-//			real thisY;
-//			stringstream(strVector[1]) >> thisY;
-			real thisY = static_cast<real>(atof(strVector[1].c_str()));
- 			numEvents += thisY;
+			real thisY = static_cast<real>(atof(thisCovariate[0].c_str()));
 			y.push_back(thisY);
 
 			// Fix offs for CLR
 			offs.push_back(1);
 
+			//Fill intercept
+			data[0]->push_back(1.0);
+			entriesPresent[0]->push_back(currentRow);
+
 			// Parse covariates
-			for (int i = 0; i < numCovariates; ++i) {
-//				real value;
-//				istringstream(strVector[2 + i]) >> value;
-				if(strVector[2 + i] == "NA"){
-					data[i]->push_back(0);
-					entriesAbsent[i]->push_back(currentRow);
-						nMissingPerColumn[i]++;
+			for (int i = 0; i < (int)strVector.size() - 1; ++i){
+				thisCovariate.clear();
+				split(thisCovariate, strVector[i + 1], ":");
+				if((int)thisCovariate.size() == 2){
+					DrugIdType drug = static_cast<DrugIdType>(atof(thisCovariate[0].c_str()));
+					if(drugMap.count(drug) == 0){
+						maxCol++;
+						drugMap.insert(make_pair(drug,maxCol));
+						indexToDrugIdMap.insert(make_pair(maxCol,drug));
+
+						real_vector* thisColumn = new real_vector();
+						push_back(NULL, thisColumn, INDICATOR);
+						int_vector* nullVector1 = new int_vector();
+						int_vector* nullVector2 = new int_vector();
+						entriesPresent.push_back(nullVector1);
+						entriesAbsent.push_back(nullVector2);
+						columnType.push_back("lr");
+						nMissingPerColumn.push_back(0);
+					}
+					int col = drugMap[drug];
+					for(int j = (int)data[col]->size(); j < currentRow; j++){
+						data[col]->push_back(0.0);
+						entriesPresent[col]->push_back(j);
+					}
+					if(thisCovariate[1] == MISSING_STRING_1 || thisCovariate[1] == MISSING_STRING_2){
+						data[col]->push_back(0.0);
+						entriesAbsent[col]->push_back(currentRow);
+						nMissingPerColumn[col]++;
+					}
+					else{
+						real value = static_cast<real>(atof(thisCovariate[1].c_str()));
+						data[col]->push_back(value);
+						entriesPresent[col]->push_back(currentRow);
+						if(value != 1.0 && value != 0.0)
+						{
+							columnType[col] = "ls";
+							formatType[col] = DENSE;
+						}
+					}
 				}
-				else{
-					real value = static_cast<real>(atof(strVector[2 + i].c_str()));
-					data[i]->push_back(value);
-					entriesPresent[i]->push_back(currentRow);
-					if(value == 1.0 || value == 0.0)
-						columnType[i] = "lr";
-					else
-						columnType[i] = "ls";
+/*
+				for(int j = col; j <= drug; j++){
+					if(j > maxCol){
+						real_vector* thisColumn = new real_vector();
+						push_back(NULL, thisColumn, INDICATOR);
+						int_vector* nullVector1 = new int_vector();
+						int_vector* nullVector2 = new int_vector();
+						entriesPresent.push_back(nullVector1);
+						entriesAbsent.push_back(nullVector2);
+						columnType.push_back("lr");
+						nMissingPerColumn.push_back(0);
+						maxCol++;
+					}
+					if(j != drug){
+						data[j]->push_back(0.0);
+						entriesPresent[j]->push_back(currentRow);
+					}
+					else{
+						if(thisCovariate[1] == MISSING_STRING_1 || thisCovariate[1] == MISSING_STRING_2){
+							data[j]->push_back(0.0);
+							entriesAbsent[j]->push_back(currentRow);
+							nMissingPerColumn[j]++;
+						}
+						else{
+							real value = static_cast<real>(atof(thisCovariate[1].c_str()));
+							data[j]->push_back(value);
+							entriesPresent[j]->push_back(currentRow);
+							if(value != 1.0 && value != 0.0)
+							{
+								columnType[j] = "ls";
+								formatType[j] = DENSE;
+							}
+						}
+					}
 				}
+				col = drug + 1;
+				*/
 			}
 			currentRow++;
 		}
@@ -139,6 +186,27 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 	y_ = y;
 
 	nevents.push_back(1); // Save last patient
+	
+	for(int j = 0; j < (int)columns.size(); j++){
+		for(int i = (int)data[j]->size(); i < nRows; i++){
+			data[j]->push_back(0.0);
+			entriesPresent[j]->push_back(i);
+		}
+	}
+
+	for(int j = 0; j < nCols; j++){
+		if(formatType[j] == INDICATOR){
+			if(columns[j])
+				columns[j]->clear();
+			columns[j] = new int_vector();
+			for(int i = 0; i < nRows; i++)
+			{
+				if((int)data[j]->at(i) == 1)
+					columns[j]->push_back(i);
+			}
+			data[j]->clear();
+		}
+	}
 
 	int index = columns.size();
 
@@ -146,7 +214,7 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 	cout << "ImputeInputReader" << endl;
 	cout << "Read " << currentRow << " data lines from " << fileName << endl;
 	cout << "Number of stratum: " << numCases << endl;
-	cout << "Number of covariates: " << numCovariates << endl;
+	cout << "Number of covariates: " << nCols << endl;
 #endif
 
 #if 0
@@ -163,9 +231,4 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 	cerr << "nEvents ";
 	printVector(nevents.data(), nevents.size());
 #endif
-}
-*/
-
-void BBRImputeInputReader::readFile(const char* fileName) {
-	
 }

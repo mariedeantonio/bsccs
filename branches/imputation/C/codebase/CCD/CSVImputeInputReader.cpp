@@ -22,7 +22,8 @@
 #define MATCH_LENGTH_1	20
 #define FORMAT_MATCH_2	"PID"
 #define MATCH_LENGTH_2	3
-#define MISSING_STRING	"NA"
+#define MISSING_STRING_1	"NA"
+#define MISSING_STRING_2	"NULL"
 #define MISSING_LENGTH	-1
 #define DELIMITER		","
 
@@ -52,7 +53,7 @@ void CSVImputeInputReader::readFile(const char* fileName) {
 
 	int numCases = 0;
 	int numCovariates = MISSING_LENGTH;
-	string currentStratum = MISSING_STRING;
+	string currentStratum = MISSING_STRING_1;
 	int numEvents = 0;
 
 	vector<string> strVector;
@@ -86,7 +87,7 @@ void CSVImputeInputReader::readFile(const char* fileName) {
 			// Parse stratum (pid)
 			string unmappedStratum = strVector[0];
 			if (unmappedStratum != currentStratum) { // New stratum, ASSUMES these are sorted
-				if (currentStratum != MISSING_STRING) { // Skip first switch
+				if (currentStratum != MISSING_STRING_1 && currentStratum != MISSING_STRING_2) { // Skip first switch
 					nevents.push_back(1);
 					numEvents = 0;
 				}
@@ -109,7 +110,7 @@ void CSVImputeInputReader::readFile(const char* fileName) {
 			for (int i = 0; i < numCovariates; ++i) {
 //				real value;
 //				istringstream(strVector[2 + i]) >> value;
-				if(strVector[2 + i] == "NA"){
+				if(strVector[2 + i] == MISSING_STRING_1 || strVector[2 + i] == MISSING_STRING_2){
 					data[i]->push_back(0);
 					entriesAbsent[i]->push_back(currentRow);
 						nMissingPerColumn[i]++;

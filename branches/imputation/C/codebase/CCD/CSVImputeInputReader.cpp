@@ -179,3 +179,7 @@ void CSVImputeInputReader::readFile(const char* fileName) {
 	printVector(nevents.data(), nevents.size());
 #endif
 }
+
+void CSVImputeInputReader::writeFile(const char* fileName){
+
+}

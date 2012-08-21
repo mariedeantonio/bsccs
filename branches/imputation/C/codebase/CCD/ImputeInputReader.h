@@ -24,7 +24,7 @@ public:
 	ImputeInputReader();
 	virtual ~ImputeInputReader();
 
-	virtual void readFile(const char* fileName) = 0;
+	virtual void writeFile(const char* fileName) = 0;
 	void sortColumns();
 	vector<string> getColumnTypesToImpute();
 	vector<int> getnMissingPerColumn();
@@ -36,6 +36,7 @@ public:
 			vec[i] = temp[ind[i]];
 		}
 	}
+	void resetParams();
 	void resetData();
 	void getSampleMeanVariance(int col, real* Xmean, real* Xvar);
 	real* getDataRow(int row, real* x);
@@ -44,6 +45,7 @@ protected:
 	vector<string> columnType;
 	vector<int> nMissingPerColumn;
 	vector<int> colIndices;
+	vector<int> reverseColIndices;
 	vector<real> y_;
 	vector<int_vector*> entriesAbsent;
 	vector<int_vector*> entriesPresent;

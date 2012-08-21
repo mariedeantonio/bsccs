@@ -86,6 +86,10 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 			real thisY = static_cast<real>(atof(thisCovariate[0].c_str()));
 			y.push_back(thisY);
 
+			// Parse censoring index entry
+			real thisZ = static_cast<real>(atof(thisCovariate[1].c_str()));
+			z.push_back(thisZ);
+
 			// Fix offs for CLR
 			offs.push_back(1);
 
@@ -231,4 +235,25 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 	cerr << "nEvents ";
 	printVector(nevents.data(), nevents.size());
 #endif
+}
+
+void BBRImputeInputReader::writeFile(const char* fileName) {
+	ofstream out;
+	out.open(fileName,ios::out);
+
+	vector<string> strVector;
+
+	for(int i = 0; i < nRows; i++){
+		vector<real> x(nCols);
+		getDataRow(i,&x[0]);
+		out << y_[i];
+		if((int)z.size() > 0)
+			out << ":" << z[i];
+		for(int j = 0; j < nCols; j++){
+			int col = reverseColIndices[drugMap[j]];
+			if(x[col] != 0.0)
+				out << " " << j << ":" << x[col];
+		}
+		out << endl;
+	}
 }

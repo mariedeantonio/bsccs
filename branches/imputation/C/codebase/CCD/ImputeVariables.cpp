@@ -149,6 +149,14 @@ void ImputeVariables::impute(CCDArguments arguments){
 					delete model;
 			}
 		}
+		reader->resetParams();
+		string outFileName = arguments.inFileName;
+		int dotind = outFileName.find_last_of('.');
+		string extension = outFileName.substr(dotind,outFileName.size()-1);
+		std::ostringstream addendum;
+		addendum << "_imputed_" << i;
+		outFileName.insert(dotind,addendum.str());
+		reader->writeFile(outFileName.c_str());
 		reader->resetData();
 	}
 }

@@ -64,6 +64,10 @@ void ImputeInputReader::sortColumns(){
 		colIndices.push_back(i);
 	sort(colIndices.begin(),colIndices.end(),Compare(nMissingPerColumn));
 
+	reverseColIndices.resize(nCols,0);
+	for(int i = 0; i < nCols; i++)
+		reverseColIndices[colIndices[i]] = i;
+
 	reindexVector(nMissingPerColumn,colIndices);
 	reindexVector(columnType,colIndices);
 	reindexVector(formatType,colIndices);
@@ -120,11 +124,13 @@ void ImputeInputReader::setupDataForImputation(int col, vector<real>& weights){
 */
 }
 
-void ImputeInputReader::resetData(){
+void ImputeInputReader::resetParams(){
 	y.clear();
-	nCols = nCols_ + 1;
+	nCols = nCols_;
 	y = y_;
+}
 
+void ImputeInputReader::resetData(){
 	for(int j = 0; j < nCols; j++){
 		if(formatType[j] == INDICATOR){
 			int lastit = 0;

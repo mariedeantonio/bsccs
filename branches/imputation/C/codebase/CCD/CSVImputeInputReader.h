@@ -15,7 +15,8 @@ public:
 	CSVImputeInputReader();
 	virtual ~CSVImputeInputReader();
 
-	virtual void readFile(const char* fileName);
+	void readFile(const char* fileName);
+	void writeFile(const char* fileName);
 };
 
 #endif /* CSVIMPUTEINPUTREADER_H_ */

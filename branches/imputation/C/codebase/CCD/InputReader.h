@@ -75,6 +75,7 @@ protected:
 	int nPatients;
 	vector<int> pid;
 	vector<real> y;
+	vector<real> z;
 	vector<int> offs;
 	vector<int> nevents;
 	map<DrugIdType, int> drugMap;

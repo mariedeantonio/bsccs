@@ -13,6 +13,8 @@
 
 using namespace std;
 
+namespace bsccs {
+
 #define DEBUG
 
 #define TEST_SPARSE // New sparse updates are great
@@ -70,13 +72,13 @@ public:
 	
 	double getLogLikelihood(void);
 
-	double getPredictiveLogLikelihood(real* weights);
+	double getPredictiveLogLikelihood(bsccs::real* weights);
 
 	double getLogPrior(void);
 	
 	virtual double getObjectiveFunction(void);
 
-	real getBeta(int i);
+	bsccs::real getBeta(int i);
 		
 	void update(int maxIterations, int convergenceType, double epsilon);
 
@@ -87,7 +89,7 @@ public:
 
 	void setPriorType(int priorType);
 
-	void setWeights(real* weights);
+	void setWeights(bsccs::real* weights);
 
 	// Getters
 	string getPriorInfo();
@@ -174,9 +176,9 @@ protected:
 	template <class T>
 	void printVector(T* vector, const int length, ostream &os);
 	
-	double oneNorm(real* vector, const int length);
+	double oneNorm(bsccs::real* vector, const int length);
 	
-	double twoNormSquared(real * vector, const int length); 
+	double twoNormSquared(bsccs::real * vector, const int length);
 	
 	int sign(double x); 
 	
@@ -198,10 +200,10 @@ protected:
 	int* hPid; // N-vector
 	int** hXColumnRowIndicators; // J-vector
  	
-	real* hBeta;
-	real* hXBeta;
-	real* hXBetaSave;
-	real* hDelta;
+	bsccs::real* hBeta;
+	bsccs::real* hXBeta;
+	bsccs::real* hXBetaSave;
+	bsccs::real* hDelta;
 
 	int N; // Number of patients
 	int K; // Number of exposure levels
@@ -218,18 +220,20 @@ protected:
 
 	bool validWeights;
 	bool useCrossValidation;
-	real* hWeights;
+	bsccs::real* hWeights;
 
 	// temporary variables
-	real* expXBeta;
-	real* offsExpXBeta;
-	real* denomPid;
-	real* numerPid;
-	real* t1;
-	real* xOffsExpXBeta;
-	real* hXjEta;
+	bsccs::real* expXBeta;
+	bsccs::real* offsExpXBeta;
+	bsccs::real* denomPid;
+	bsccs::real* numerPid;
+	bsccs::real* t1;
+	bsccs::real* xOffsExpXBeta;
+	bsccs::real* hXjEta;
 };
 
-double convertVarianceToHyperparameter(double variance);
 
+
+double convertVarianceToHyperparameter(double variance);
+}
 #endif /* CYCLICCOORDINATEDESCENT_H_ */

@@ -18,6 +18,7 @@ using namespace std;
 
 #include "CompressedIndicatorMatrix.h"
 
+namespace bsccs {
 
 //#define USE_DRUG_STRING
 
@@ -63,5 +64,7 @@ private:
 	map<int, DrugIdType> indexToDrugIdMap;
 	string conditionId;
 };
+
+}
 
 #endif /* INPUTREADER_H_ */

@@ -15,11 +15,14 @@
 
 #define NO_BETA
 
+namespace bsccs {
+
 #ifdef DOUBLE_PRECISION
 	typedef double gpu_real;
 #else
 	typedef float gpu_real;
 #endif
+
 
 
 class GPUCyclicCoordinateDescent: public CyclicCoordinateDescent {
@@ -81,8 +84,8 @@ private:
 	GPUPtr dHessian;
 	GPUPtr dReducedGradientHessian;
 
-	real* hGradient;
-	real* hHessian;
+	bsccs::real* hGradient;
+	bsccs::real* hHessian;
 
 	GPUPtr* dXColumnRowIndicators;
 //	int* hColumnRowLength;
@@ -94,5 +97,7 @@ private:
 	int cacheSizeGH;
 	int alignedGHCacheSize;
 };
+
+}
 
 #endif /* GPUCYCLICCOORDINATEDESCENT_H_ */

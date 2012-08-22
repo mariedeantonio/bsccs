@@ -12,6 +12,8 @@
 
 #include "AbstractSelector.h"
 
+namespace bsccs {
+
 class BootstrapSelector : public AbstractSelector {
 public:
 	BootstrapSelector(
@@ -24,12 +26,12 @@ public:
 
 	virtual void permute();
 
-	virtual void getWeights(int batch, std::vector<real>& weights);
+	virtual void getWeights(int batch, std::vector<bsccs::real>& weights);
 
-	virtual void getComplement(std::vector<real>& weights);
+	virtual void getComplement(std::vector<bsccs::real>& weights);
 
 private:
 	std::multiset<int> selectedSet;
 };
-
+}
 #endif /* BOOTSTRAPSELECTOR_H_ */

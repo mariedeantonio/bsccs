@@ -42,6 +42,7 @@
 
 using namespace TCLAP;
 using namespace std;
+using namespace bsccs;
 
 double calculateSeconds(const timeval &time1, const timeval &time2) {
 	return time2.tv_sec - time1.tv_sec +
@@ -75,7 +76,7 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 		// Cross-validation arguments
 		SwitchArg doCVArg("c", "cv", "Perform cross-validation selection of hyperprior variance", false);
 		ValueArg<double> lowerCVArg("l", "lower", "Lower limit for cross-validation search", false, 1.0, "real");
-		ValueArg<double> upperCVArg("u", "upper", "Upper limit for cross-validation search", false, 100.0, "real");
+		ValueArg<double> upperCVArg("u", "upper", "Upper limit for cross-validation search", false, 1000.0, "real");
 		ValueArg<int> foldCVArg("f", "fold", "Fold level for cross-validation", false, 10, "int");
 		ValueArg<int> gridCVArg("", "gridSize", "Uniform grid size for cross-validation search", false, 20, "int");
 		ValueArg<int> foldToComputeCVArg("", "computeFold", "Number of fold to iterate, default is 'fold' value", false, 10, "int");
@@ -86,6 +87,8 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 		ValueArg<string> bsOutFileArg("", "bsFileName", "Bootstrap output file name", false, "bs.txt", "bsFileName");
 		ValueArg<int> replicatesArg("r", "replicates", "Number of bootstrap replicates", false, 200, "int");
 		SwitchArg reportRawEstimatesArg("","raw", "Report the raw bootstrap estimates", false);
+		SwitchArg BCaBootstrapCI("","BCa", "Use BCa bootstrap intervals", false);
+
 
 		cmd.add(gpuArg);
 		cmd.add(betterGPUArg);
@@ -108,6 +111,7 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 		cmd.add(bsOutFileArg);
 		cmd.add(replicatesArg);
 		cmd.add(reportRawEstimatesArg);
+		cmd.add(BCaBootstrapCI);
 
 		//tshaddox arguments
 		cmd.add(hierarchyFileArg);
@@ -174,6 +178,11 @@ void parseCommandLine(int argc, char* argv[], CCDArguments &arguments) {
 				arguments.reportRawEstimates = true;
 			} else {
 				arguments.reportRawEstimates = false;
+			}
+			if (BCaBootstrapCI.isSet()) {
+				arguments.BCaBootstrapCI = true;
+			} else {
+				arguments.BCaBootstrapCI = false;
 			}
 		}
 
@@ -285,13 +294,13 @@ double runCrossValidation(CyclicCoordinateDescent *ccd, InputReader *reader,
 			SUBJECT, arguments.seed);
 	CrossValidationDriver driver(arguments.gridSteps, arguments.lowerLimit, arguments.upperLimit);
 
-/*
-	driver.hierarchyDrive(*ccd, selector, arguments);
-	driver.resetForOptimal(*ccd, selector, arguments);
-	cout << "Post non-greedy Drive" << endl;
-	cout << "sigma2Beta is " << ccd->sigma2Beta << endl;
-	cout << "classHierarchyVariance is " << ccd->classHierarchyVariance << endl;
-*/
+
+	//driver.hierarchyDrive(*ccd, selector, arguments);
+	//driver.resetForOptimal(*ccd, selector, arguments);
+	//cout << "Post non-greedy Drive" << endl;
+	//cout << "sigma2Beta is " << ccd->sigma2Beta << endl;
+	//cout << "classHierarchyVariance is " << ccd->classHierarchyVariance << endl;
+
 
 
 	driver.greedyDrive(*ccd, selector, arguments);
@@ -322,15 +331,21 @@ int main(int argc, char* argv[]) {
 	InputReader* reader = NULL;
 	CCDArguments arguments;
 
+	cout <<" ####################  Parse CommandLine" << endl;
 	parseCommandLine(argc, argv, arguments);
+
 
 	std::map<int, int> drugIdToIndex;
 
+	cout <<" ####################  Initialize" << endl;
 	double timeInitialize = initializeModel(&reader, &ccd, arguments, drugIdToIndex);
 
 	// By tshaddox
 	HierarchyReader* hierarchyReader = NULL;
 
+	//arguments.hierarchyFileName = "/omop1/hSCCS/hierarchy.txt";
+
+	cout <<" ####################  Hierarchy File" << endl;
 	if ((arguments.hierarchyFileName).compare("noFileName") == 0) {
 		cout << "No Hierarchy File" << endl;
 		ccd->useHierarchy = false;
@@ -341,7 +356,7 @@ int main(int argc, char* argv[]) {
 	}
 
 
-
+	cout <<" ####################  Fit model" << endl;
 	double timeUpdate;
 	if (arguments.doCrossValidation) {
 		timeUpdate = runCrossValidation(ccd, reader, arguments);
@@ -363,3 +378,4 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+

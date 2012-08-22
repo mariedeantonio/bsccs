@@ -15,6 +15,7 @@
 
 #include "AbstractDriver.h"
 
+namespace bsccs {
 class CrossValidationDriver : public AbstractDriver {
 public:
 	CrossValidationDriver(
@@ -33,7 +34,7 @@ public:
 
 	double oneFoldCrossValidation(CyclicCoordinateDescent& ccd,
 			AbstractSelector& selector,
-			const CCDArguments& arguments, int i, vector<real> weights, int step, int point);
+			const CCDArguments& arguments, int i, vector<bsccs::real> weights, int step, int point);
 
 	void greedyDrive(CyclicCoordinateDescent& ccd,
 			AbstractSelector& selector,
@@ -56,7 +57,7 @@ private:
 
 	double computePointEstimate(const std::vector<double>& value);
 
-	void findMax(double* maxPoint, double* maxValue);
+	void findMax(double* maxPoint, double* maxValue, double* minValue);
 
 	std::vector<double> gridPoint;
 	std::vector<double> gridValue;
@@ -66,5 +67,5 @@ private:
 	double upperLimit;
 
 };
-
+}
 #endif /* CROSSVALIDATIONDRIVER_H_ */

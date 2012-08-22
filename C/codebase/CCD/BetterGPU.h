@@ -13,6 +13,8 @@
 #include "GPU/GPUInterface.h"
 #include "GPU/KernelLauncherCCD.h"
 
+namespace bsccs {
+
 #ifdef DOUBLE_PRECISION
 	typedef double gpu_real;
 #else
@@ -68,8 +70,10 @@ private:
 	int cacheSizeGH;
 	int alignedGHCacheSize;
 
-	real* hGradient;
-	real* hHessian;
+	bsccs::real* hGradient;
+	bsccs::real* hHessian;
 };
+
+}
 
 #endif /* BETTERGPU_H_ */

@@ -12,6 +12,8 @@
 
 #include "CrossValidationSelector.h"
 
+namespace bsccs {
+
 CrossValidationSelector::CrossValidationSelector(
 		int inFold,
 		std::vector<int>* inIds,
@@ -51,7 +53,7 @@ CrossValidationSelector::~CrossValidationSelector() {
 	// Do nothing
 }
 
-void CrossValidationSelector::getWeights(int batch, std::vector<real>& weights) {
+void CrossValidationSelector::getWeights(int batch, std::vector<bsccs::real>& weights) {
 	if (weights.size() != K) {
 		weights.resize(K);
 	}
@@ -83,8 +85,8 @@ void CrossValidationSelector::getWeights(int batch, std::vector<real>& weights) 
 	}
 }
 
-void CrossValidationSelector::getComplement(std::vector<real>& weights) {
-	for(std::vector<real>::iterator it = weights.begin(); it != weights.end(); it++) {
+void CrossValidationSelector::getComplement(std::vector<bsccs::real>& weights) {
+	for(std::vector<bsccs::real>::iterator it = weights.begin(); it != weights.end(); it++) {
 		*it = 1 - *it;
 	}
 }
@@ -93,4 +95,5 @@ void CrossValidationSelector::permute() {
 	if (!deterministic) {
 		std::random_shuffle(permutation.begin(), permutation.end());
 	}
+}
 }

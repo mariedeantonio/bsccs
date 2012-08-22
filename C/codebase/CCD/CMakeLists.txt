@@ -9,10 +9,10 @@ include_directories(. ${CMAKE_SOURCE_DIR}/codebase)
 #	DOCS "Location of MTL header file"
 #	PATHS "/Users/msuchard/Documents/Projects")
 #	
-#find_path(BOOST_INCLUDE_DIR
-#	NAMES boost
-#	DOCS "Location of boost header file"
-#	PATHS "/Users/msuchard/Documents/Projects/boost_1_42_0")
+find_path(BOOST_INCLUDE_DIR
+	NAMES boost
+	DOCS "Location of boost header file"
+	PATHS "/Users/trevorshaddox/Desktop/boost_1_51_0")
 	
 #find_library(GSL_LIBRARY
 #	NAMES gsl
@@ -58,15 +58,15 @@ include_directories(. ${CMAKE_SOURCE_DIR}/codebase)
 
 #message(STATUS "Found MTL header file in: " ${MTL_INCLUDE_DIR})
 
-#message(STATUS "Found boost header files in: " ${BOOST_INCLUDE_DIR})
+message(STATUS "Found boost header files in: " ${BOOST_INCLUDE_DIR})
 
 
 
-#include_directories(${GSL_INCLUDE_DIR} 
-#					${CUDA_INCLUDE_DIR}
-#					${MTL_INCLUDE_DIR}
-#					${BOOST_INCLUDE_DIR}
-#					)
+include_directories(${GSL_INCLUDE_DIR} 
+					${CUDA_INCLUDE_DIR}
+					${MTL_INCLUDE_DIR}
+					${BOOST_INCLUDE_DIR}
+					)
 
 set(SOURCE_FILES
 	ccd.cpp

@@ -21,7 +21,7 @@
 
 using namespace std;
 
-
+namespace bsccs {
 void compareIntVector(int* vec0, int* vec1, int dim, const char* name) {
 	for (int i = 0; i < dim; i++) {
 		if (vec0[i] != vec1[i]) {
@@ -86,6 +86,8 @@ CyclicCoordinateDescent::CyclicCoordinateDescent(
 
 
 	hXI = reader;
+
+	//cout << "CCD constructor hXI rows = " << hXI->getNumberOfRows() << endl;
 	hEta = reader->getEtaVector();
 	hOffs = reader->getOffsetVector();
 	hNEvents = NULL;
@@ -165,14 +167,14 @@ void CyclicCoordinateDescent::resetBounds() {
 void CyclicCoordinateDescent::init() {
 	
 	// Set parameters and statistics space
-	hDelta = (real*) malloc(J * sizeof(real));
+	hDelta = (bsccs::real*) malloc(J * sizeof(bsccs::real));
 //	for (int j = 0; j < J; j++) {
 //		hDelta[j] = 2.0;
 //	}
 
-	hBeta = (real*) calloc(J, sizeof(real)); // Fixed starting state
-	hXBeta = (real*) calloc(K, sizeof(real));
-	hXBetaSave = (real*) calloc(K, sizeof(real));
+	hBeta = (bsccs::real*) calloc(J, sizeof(bsccs::real)); // Fixed starting state
+	hXBeta = (bsccs::real*) calloc(K, sizeof(bsccs::real));
+	hXBetaSave = (bsccs::real*) calloc(K, sizeof(bsccs::real));
 
 	// Set prior
 	priorType = LAPLACE;
@@ -192,18 +194,18 @@ void CyclicCoordinateDescent::init() {
 	}
 		
 	// Init temporary variables
-	offsExpXBeta = (real*) malloc(sizeof(real) * K);
-	xOffsExpXBeta = (real*) malloc(sizeof(real) * K);
+	offsExpXBeta = (bsccs::real*) malloc(sizeof(bsccs::real) * K);
+	xOffsExpXBeta = (bsccs::real*) malloc(sizeof(bsccs::real) * K);
 
 	// Put numer and denom in single memory block, with first entries on 16-word boundary
 	int alignedLength = getAlignedLength(N);
 
-	numerPid = (real*) malloc(sizeof(real) * 2 * alignedLength);
-//	denomPid = (real*) malloc(sizeof(real) * N);
+	numerPid = (bsccs::real*) malloc(sizeof(bsccs::real) * 2 * alignedLength);
+//	denomPid = (bsccs::real*) malloc(sizeof(bsccs::real) * N);
 	denomPid = numerPid + alignedLength; // Nested in denomPid allocation
-	t1 = (real*) malloc(sizeof(real) * N);
+	t1 = (bsccs::real*) malloc(sizeof(bsccs::real) * N);
 	hNEvents = (int*) malloc(sizeof(int) * N);
-	hXjEta = (real*) malloc(sizeof(real) * J);
+	hXjEta = (bsccs::real*) malloc(sizeof(bsccs::real) * J);
 	hWeights = NULL;
 
 	// Initialize XColumnRowIndicators for fast spMV
@@ -287,7 +289,7 @@ void CyclicCoordinateDescent::logResults(const char* fileName) {
 	outLog.close();
 }
 
-double CyclicCoordinateDescent::getPredictiveLogLikelihood(real* weights) {
+double CyclicCoordinateDescent::getPredictiveLogLikelihood(bsccs::real* weights) {
 
 	if (!sufficientStatisticsKnown) {
 		computeRemainingStatistics(true);
@@ -304,7 +306,7 @@ double CyclicCoordinateDescent::getPredictiveLogLikelihood(real* weights) {
 	return logLikelihood;
 }
 
-real CyclicCoordinateDescent::getBeta(int i) {
+bsccs::real CyclicCoordinateDescent::getBeta(int i) {
 	if (!sufficientStatisticsKnown) {
 		computeRemainingStatistics(true);
 	}
@@ -359,7 +361,7 @@ void CyclicCoordinateDescent::setPriorType(int iPriorType) {
 	priorType = iPriorType;
 }
 
-void CyclicCoordinateDescent::setWeights(real* iWeights) {
+void CyclicCoordinateDescent::setWeights(bsccs::real* iWeights) {
 
 	if (iWeights == NULL) {
 		std::cerr << "Turning off weights!" << std::endl;
@@ -371,7 +373,7 @@ void CyclicCoordinateDescent::setWeights(real* iWeights) {
 	}
 
 	if (hWeights == NULL) {
-		hWeights = (real*) malloc(sizeof(real) * K);
+		hWeights = (bsccs::real*) malloc(sizeof(bsccs::real) * K);
 	}
 	for (int i = 0; i < K; ++i) {
 		hWeights[i] = iWeights[i];
@@ -422,7 +424,7 @@ double CyclicCoordinateDescent::computeZhangOlesConvergenceCriterion(void) {
 }
 
 void CyclicCoordinateDescent::saveXBeta(void) {
-	memcpy(hXBetaSave, hXBeta, K * sizeof(real));
+	memcpy(hXBetaSave, hXBeta, K * sizeof(bsccs::real));
 }
 
 void CyclicCoordinateDescent::update(
@@ -470,7 +472,7 @@ void CyclicCoordinateDescent::update(
 			}
 			
 			if ((index+1) % 100 == 0) {
-				cout << "Finished variable " << (index+1) << endl;
+				//cout << "Finished variable " << (index+1) << endl;
 			}
 			
 		}
@@ -495,21 +497,21 @@ void CyclicCoordinateDescent::update(
 			double thisLogLikelihood = getLogLikelihood();
 			double thisLogPrior = getLogPrior();
 			double thisLogPost = thisLogLikelihood + thisLogPrior;
-			cout << endl;
-			printVector(hBeta, J, cout);
-			cout << endl;
-			cout << "log post: " << thisLogPost
-				 << " (" << thisLogLikelihood << " + " << thisLogPrior
-			     << ") (iter:" << iteration << ") ";
+			//cout << endl;
+			//printVector(hBeta, J, cout);
+			//cout << endl;
+			//cout << "log post: " << thisLogPost
+			//	 << " (" << thisLogLikelihood << " + " << thisLogPrior
+			 //    << ") (iter:" << iteration << ") ";
 
 			if (epsilon > 0 && conv < epsilon) {
-				cout << "Reached convergence criterion" << endl;
+			//	cout << "Reached convergence criterion" << endl;
 				done = true;
 			} else if (iteration == maxIterations) {
-				cout << "Reached maximum iterations" << endl;
+			//	cout << "Reached maximum iterations" << endl;
 				done = true;
 			} else {
-				cout << endl;
+			//	cout << endl;
 			}
 		}				
 	}
@@ -521,28 +523,28 @@ void CyclicCoordinateDescent::update(
 
 void CyclicCoordinateDescent::computeGradientAndHession(int index, double *ogradient,
 		double *ohessian) {
-	real gradient = 0;
-	real hessian = 0;
+	bsccs::real gradient = 0;
+	bsccs::real hessian = 0;
 
 	int* nEvents = hNEvents;
 	const int* end = hNEvents + N;
 
 #ifdef MERGE_TRANSFORMATION
-	real* num = numerPid;
-	real* denom = denomPid;
+	bsccs::real* num = numerPid;
+	bsccs::real* denom = denomPid;
 	for (; nEvents != end; ++nEvents, ++num, ++denom) {
-		const real t = *num / *denom;
-		const real g = *nEvents * t;
+		const bsccs::real t = *num / *denom;
+		const bsccs::real g = *nEvents * t;
 		gradient += g;
-		hessian += g * (static_cast<real>(1.0) - t);
+		hessian += g * (static_cast<bsccs::real>(1.0) - t);
 	}
 #else
-	real* tmp = t1;
+	bsccs::real* tmp = t1;
 	for (; nEvents != end; ++nEvents, ++tmp) {
-		const real t = *tmp;
-		const real g = *nEvents * t;
+		const bsccs::real t = *tmp;
+		const bsccs::real g = *nEvents * t;
 		gradient += g;
-		hessian += g * (static_cast<real>(1.0) - t);
+		hessian += g * (static_cast<bsccs::real>(1.0) - t);
 	}
 #endif
 
@@ -553,6 +555,17 @@ void CyclicCoordinateDescent::computeGradientAndHession(int index, double *ograd
 
 void CyclicCoordinateDescent::computeNumeratorForGradient(int index) {
 
+	/*
+	cout <<" GOT HERE " << endl;
+
+	cout <<"Rows = " << hXI->getNumberOfRows() << endl;
+	cout <<"Columns = " << hXI->getNumberOfColumns() << endl;
+	cout <<hXI->getCompressedColumnVector(0)[2]<< endl;
+	cout <<hXI->getCompressedColumnVector(1)[2]<< endl;
+	cout <<hXI->getCompressedColumnVector(2)[2]<< endl;
+	cout <<hXI->getCompressedColumnVector(3)[2]<< endl;
+	cout <<hXI->getCompressedColumnVector(4)[2]<< endl;
+*/
 	zeroVector(numerPid, N);
 	const int n = hXI->getNumberOfEntries(index);
 
@@ -577,10 +590,10 @@ void CyclicCoordinateDescent::computeRatio(int index) {
 	const int n = hXI->getNumberOfEntries(index);
 
 #ifdef BETTER_LOOPS
-	real* t = t1;
-	const real* end = t + N;
-	real* num = numerPid;
-	real* denom = denomPid;
+	bsccs::real* t = t1;
+	const bsccs::real* end = t + N;
+	bsccs::real* num = numerPid;
+	bsccs::real* denom = denomPid;
 	for (; t != end; ++t, ++num, ++denom) {
 		*t = *num / *denom;
 	}
@@ -603,12 +616,12 @@ void CyclicCoordinateDescent::computeRatiosForGradientAndHessian(int index) {
 double CyclicCoordinateDescent::getGradient(int drug) {
 	double t1 = 1/sigma2Beta; // this is the hyperparameter that is used in the original code
 	double t2 = 1/classHierarchyVariance;
-	//cout << "classHierarchyVariance = " << classHierarchyVariance << endl;
-	//cout << "sigma2Beta = " << sigma2Beta << endl;
+
 
 	int parent = getParentMapCCD[drug];
 	vector<int> siblings = getChildMapCCD[parent];
 	double sumBetas = 0;
+	int nSiblingsOfInterest = 0; //Different from siblings length if weights used
 	//cout << "drug is " << drug << endl;
 	//cout << "siblings are: " << endl;
 	for (int i = 0; i < siblings.size(); i++) {
@@ -619,6 +632,7 @@ double CyclicCoordinateDescent::getGradient(int drug) {
 
 
 	double gradient = t1*hBeta[drug] - t1*t1*sumBetas / (siblings.size()*t1 + t2);
+	//cout << "gradient = " << gradient << endl;
 	return(gradient);
 }
 
@@ -750,7 +764,7 @@ void CyclicCoordinateDescent::updateXBeta(double delta, int index) {
 	// Separate function for benchmarking
 	hBeta[index] += delta;
 
-	real realDelta = static_cast<real>(delta);
+	bsccs::real realDelta = static_cast<bsccs::real>(delta);
 
 
 #ifdef TEST_ROW_INDEX
@@ -763,8 +777,8 @@ void CyclicCoordinateDescent::updateXBeta(double delta, int index) {
 		const int k = indicators[i];
 		hXBeta[k] += realDelta;
 #ifdef TEST_SPARSE
-		real oldEntry = offsExpXBeta[k];
-		real newEntry = offsExpXBeta[k] = hOffs[k] * exp(hXBeta[k]);
+		bsccs::real oldEntry = offsExpXBeta[k];
+		bsccs::real newEntry = offsExpXBeta[k] = hOffs[k] * exp(hXBeta[k]);
 #ifdef TEST_ROW_INDEX
 		denomPid[rows[i]] += (newEntry - oldEntry);
 #else
@@ -795,7 +809,7 @@ void CyclicCoordinateDescent::computeRemainingStatistics(bool allStats) {
 	sufficientStatisticsKnown = true;
 }
 
-double CyclicCoordinateDescent::oneNorm(real* vector, const int length) {
+double CyclicCoordinateDescent::oneNorm(bsccs::real* vector, const int length) {
 	double norm = 0;
 	for (int i = 0; i < length; i++) {
 		norm += abs(vector[i]);
@@ -803,7 +817,7 @@ double CyclicCoordinateDescent::oneNorm(real* vector, const int length) {
 	return norm;
 }
 
-double CyclicCoordinateDescent::twoNormSquared(real * vector, const int length) {
+double CyclicCoordinateDescent::twoNormSquared(bsccs::real * vector, const int length) {
 	double norm = 0;
 	for (int i = 0; i < length; i++) {
 		norm += vector[i] * vector[i];
@@ -903,4 +917,5 @@ inline int CyclicCoordinateDescent::sign(double x) {
 		return -1;
 	}
 	return 1;
+}
 }

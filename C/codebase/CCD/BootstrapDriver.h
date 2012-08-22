@@ -13,9 +13,11 @@
 #include "AbstractDriver.h"
 #include "InputReader.h"
 
-typedef std::vector<real> rvector;
+typedef std::vector<bsccs::real> rvector;
 typedef std::vector<rvector*> rarray;
 typedef	rarray::iterator rarrayIterator;
+
+namespace bsccs {
 
 class BootstrapDriver : public AbstractDriver {
 public:
@@ -33,10 +35,14 @@ public:
 	virtual void logResults(const CCDArguments& arguments);
 
 private:
+	double numeratorForBCa; // =sum(thetaHat - theta_i)^3 for all bootstrap samples
+	double denominatorForBCa; // = 6*(sum(thetaHat - theta_i)^2)^3/2 for all bootstrap samples
+	double BCaQ;
 	const int replicates;
 	InputReader* reader;
 	const int J;
 	rarray estimates;
 };
 
+}
 #endif /* BOOTSTRAPDRIVER_H_ */

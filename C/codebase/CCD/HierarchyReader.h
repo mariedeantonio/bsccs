@@ -20,6 +20,8 @@ using namespace std;
 
 //#define USE_DRUG_STRING
 
+namespace bsccs {
+
 #ifdef USE_DRUG_STRING
 	typedef string DrugIdType; // TODO String do not get sorted in numerical order
 #else
@@ -37,5 +39,7 @@ private:
 
 
 };
+
+}
 
 #endif /* HIERARCHYREADER_H_ */

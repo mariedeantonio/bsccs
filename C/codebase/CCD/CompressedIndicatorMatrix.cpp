@@ -12,12 +12,14 @@
 
 #include "CompressedIndicatorMatrix.h"
 
+namespace bsccs {
+
 CompressedIndicatorMatrix::CompressedIndicatorMatrix() {
 	// Do nothing
 }
 
 CompressedIndicatorMatrix::CompressedIndicatorMatrix(const char* fileName) {
-	
+
 	ifstream in(fileName);	
 	if (!in) {
 		cerr << "Unable to open " << fileName << endl;
@@ -57,12 +59,15 @@ CompressedIndicatorMatrix::CompressedIndicatorMatrix(const char* fileName) {
 		std::sort(columns[j].begin(), columns[j].end());
 	}
 		
+
 #ifdef DEBUG
 	cerr << "Read in sparse indicator matrix from " << fileName << endl;
 	cerr << "Spare matrix dimensions = " << nRows << " x " << nCols << endl;
 	cerr << "Number of non-zero elements = " << nEntries << endl;	
 #endif
 	
+
+
 }
 
 CompressedIndicatorMatrix::~CompressedIndicatorMatrix() {
@@ -91,4 +96,5 @@ void CompressedIndicatorMatrix::allocateMemory(int nCols) {
 	for (int j = 0; j < nCols; j++) {
 		columns[j] = int_vector(); // Create empty list
 	}
+}
 }

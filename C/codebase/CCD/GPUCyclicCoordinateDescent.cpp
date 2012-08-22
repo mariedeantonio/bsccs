@@ -14,6 +14,8 @@
 
 using namespace std;
 
+namespace bsccs {
+
 GPUCyclicCoordinateDescent::GPUCyclicCoordinateDescent(int deviceNumber, InputReader* reader)
 	: CyclicCoordinateDescent(reader) {
 	
@@ -100,21 +102,21 @@ GPUCyclicCoordinateDescent::GPUCyclicCoordinateDescent(int deviceNumber, InputRe
 	alignedGHCacheSize = getAlignedLength(cacheSizeGH);
 
 	dNumerPid = gpu->AllocateRealMemory(2 * alignedN);
-	dDenomPid = dNumerPid  + sizeof(real) * alignedN; // GPUPtr is void* not real*
+	dDenomPid = dNumerPid  + sizeof(bsccs::real) * alignedN; // GPUPtr is void* not bsccs::real*
 
 	dGradient = gpu->AllocateRealMemory(2 * alignedGHCacheSize);
-	dHessian = dGradient + sizeof(real) * alignedGHCacheSize; // GPUPtr is void* not real*
-	hGradient = (real*) malloc(2 * sizeof(real) * alignedGHCacheSize);
+	dHessian = dGradient + sizeof(bsccs::real) * alignedGHCacheSize; // GPUPtr is void* not bsccs::real*
+	hGradient = (bsccs::real*) malloc(2 * sizeof(bsccs::real) * alignedGHCacheSize);
 	hHessian = hGradient + alignedGHCacheSize;
 #else
 	dDenomPid = gpu->AllocateRealMemory(N);
 	dNumerPid = gpu->AllocateRealMemory(N);
 	dT1 = gpu->AllocateRealMemory(N);
 	dGradient = gpu->AllocateRealMemory(2 * N);
-	dHessian = dGradient + sizeof(real) * N;
+	dHessian = dGradient + sizeof(bsccs::real) * N;
 	dReducedGradientHessian = gpu->AllocateRealMemory(2);
-	hGradient = (real*) malloc(sizeof(real) * N);
-	hHessian = (real*) malloc(sizeof(real) * N);
+	hGradient = (bsccs::real*) malloc(sizeof(bsccs::real) * N);
+	hHessian = (bsccs::real*) malloc(sizeof(bsccs::real) * N);
 #endif
 
 //	cerr << "Memory allocate 5" << endl;
@@ -250,7 +252,7 @@ double GPUCyclicCoordinateDescent::getObjectiveFunction(void) {
     fprintf(stderr, "\t\t\tEntering GPUCylicCoordinateDescent::getObjectiveFunction\n");
 #endif 	
     
-	gpu->MemcpyDeviceToHost(hXBeta, dXBeta, sizeof(real) * K);
+	gpu->MemcpyDeviceToHost(hXBeta, dXBeta, sizeof(bsccs::real) * K);
 	double criterion = 0;
 	for (int i = 0; i < K; i++) {
 		criterion += hXBeta[i] * hEta[i];
@@ -264,7 +266,7 @@ double GPUCyclicCoordinateDescent::getObjectiveFunction(void) {
 }
 
 double GPUCyclicCoordinateDescent::computeZhangOlesConvergenceCriterion(void) {
-	gpu->MemcpyDeviceToHost(hXBeta, dXBeta, sizeof(real) * K);
+	gpu->MemcpyDeviceToHost(hXBeta, dXBeta, sizeof(bsccs::real) * K);
 
 	// TODO Could do reduction on GPU
 	return CyclicCoordinateDescent::computeZhangOlesConvergenceCriterion();
@@ -349,7 +351,7 @@ void GPUCyclicCoordinateDescent::getDenominators(void) {
 #ifdef GPU_DEBUG_FLOW
     fprintf(stderr, "\t\t\tEntering GPUCylicCoordinateDescent::getDenominators\n");
 #endif  		
-	gpu->MemcpyDeviceToHost(denomPid, dDenomPid, sizeof(real) * N);
+	gpu->MemcpyDeviceToHost(denomPid, dDenomPid, sizeof(bsccs::real) * N);
 #ifdef GPU_DEBUG_FLOW
     fprintf(stderr, "\t\t\tLeaving GPUCylicCoordinateDescent::getDenominators\n");
 #endif 	
@@ -370,18 +372,18 @@ void GPUCyclicCoordinateDescent::computeGradientAndHession(int index, double *og
 #ifdef GPU_DEBUG_FLOW
     fprintf(stderr, "\t\t\tEntering GPUCylicCoordinateDescent::computeGradientAndHessian\n");
 #endif 	
-	real gradient = 0;
-	real hessian = 0;
+	bsccs::real gradient = 0;
+	bsccs::real hessian = 0;
 
 #ifdef MERGE_TRANSFORMATION
 	// TODO dynamically determine threads/blocks.
 	int blockUsed = kernels->computeGradientAndHessianWithReduction(dNumerPid, dDenomPid, dNEvents,
 			dGradient, dHessian, N, 1, WORK_BLOCK_SIZE);
-	gpu->MemcpyDeviceToHost(hGradient, dGradient, sizeof(real) * 2 * alignedGHCacheSize);
+	gpu->MemcpyDeviceToHost(hGradient, dGradient, sizeof(bsccs::real) * 2 * alignedGHCacheSize);
 
-	real* gradientCache = hGradient;
-	const real* end = gradientCache + cacheSizeGH;
-	real* hessianCache = hHessian;
+	bsccs::real* gradientCache = hGradient;
+	const bsccs::real* end = gradientCache + cacheSizeGH;
+	bsccs::real* hessianCache = hHessian;
 
 	// TODO Remove code duplication with CPU version from here below
 	for (; gradientCache != end; ++gradientCache, ++hessianCache) {
@@ -396,8 +398,8 @@ void GPUCyclicCoordinateDescent::computeGradientAndHession(int index, double *og
 	blocks = (64 < blocks) ? 64 : blocks;
 	
 	kernels->reduceSum(dGradient, dGradient, N, blocks, threads);
-	kernels->reduceSum(dHessian, dGradient+(blocks*sizeof(real)), N, blocks, threads);
-	gpu-> MemcpyDeviceToHost(hGradient, dGradient, 2*blocks*sizeof(real));
+	kernels->reduceSum(dHessian, dGradient+(blocks*sizeof(bsccs::real)), N, blocks, threads);
+	gpu-> MemcpyDeviceToHost(hGradient, dGradient, 2*blocks*sizeof(bsccs::real));
 
 	for (int i = 0; i < blocks; i++)
 	{	
@@ -419,4 +421,4 @@ void GPUCyclicCoordinateDescent::computeGradientAndHession(int index, double *og
     fprintf(stderr, "\t\t\tLeaving GPUCylicCoordinateDescent::computeGradientAndHessian\n");
 #endif 	
 }
-
+}

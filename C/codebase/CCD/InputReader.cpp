@@ -17,6 +17,7 @@
 #include "InputReader.h"
 
 
+namespace bsccs {
 #define MAX_ENTRIES		1000000000
 
 #define FORMAT_MATCH_1	"CONDITION_CONCEPT_ID"
@@ -63,6 +64,8 @@ InputReader::InputReader(const char* fileName, map<int, int> &drugIdToIndex) {
 
 	vector<int_vector> unorderColumns = vector<int_vector>();
 
+	vector<int_vector> unorderedRows = vector<int_vector>(); //SPARSE ROW
+
 	int numPatients = 0;
 	int numDrugs = 0;
 	string currentPid = MISSING_STRING;
@@ -72,6 +75,9 @@ InputReader::InputReader(const char* fileName, map<int, int> &drugIdToIndex) {
 
 	int currentEntry = 0;
 	while (getline(in, line) && (currentEntry < MAX_ENTRIES)) {	
+		if (currentEntry % 100 == 0) {
+			//cout << "CE =" << currentEntry << endl;
+		}
 		if (!line.empty()) {
 
 			stringstream ss(line.c_str()); // Tokenize
@@ -115,6 +121,7 @@ InputReader::InputReader(const char* fileName, map<int, int> &drugIdToIndex) {
 			// Parse remaining (variable-length) entries
 			DrugIdType drug;
 			vector<DrugIdType> uniqueDrugsForEntry;
+			unorderedRows.push_back(int_vector());
 			while (ss >> drug) {
 				if (drug == noDrug) { // No drug
 					// Do nothing
@@ -127,6 +134,9 @@ InputReader::InputReader(const char* fileName, map<int, int> &drugIdToIndex) {
 					if (!listContains(uniqueDrugsForEntry, drug)) {
 						// Add to CSC storage
 						unorderColumns[drugMap[drug]].push_back(currentEntry);
+						//cout << "drug map = " << drugMap[drug] << endl;
+						//cout << "current entry = " << currentEntry << endl;
+						unorderedRows[currentEntry].push_back(drugMap[drug]);
 						uniqueDrugsForEntry.push_back(drug);
 					}
 				}
@@ -140,10 +150,14 @@ InputReader::InputReader(const char* fileName, map<int, int> &drugIdToIndex) {
 
 	columns = vector<int_vector>(unorderColumns.size());
 
+	cout << "start loop!" << endl;
+
 	// Sort drugs numerically
 	int index = 0;
 	for (map<DrugIdType,int>::iterator ii = drugMap.begin(); ii != drugMap.end(); ii++) {
+		//cout << "index = " << index << endl;
 	   	columns[index] = unorderColumns[(*ii).second];
+	   	//cout << "unorderColumns[(*ii).second] = " << unorderColumns[(*ii).second][0] << endl;
 	   	drugMap[(*ii).first] = index;
 	   	indexToDrugIdMap.insert(make_pair(index, (*ii).first));
 	   	drugIdToIndex.insert(make_pair((*ii).first, index + 1)); // this fixes a problem that arose because of the zero index
@@ -211,4 +225,6 @@ int* InputReader::getOffsetVector() {
 map<int, DrugIdType> InputReader::getDrugNameMap() {
 //	return drugMap;
 	return indexToDrugIdMap;
+}
+
 }

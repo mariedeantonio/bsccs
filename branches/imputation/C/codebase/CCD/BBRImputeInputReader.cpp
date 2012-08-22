@@ -57,17 +57,17 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 
 	// Allocate a column for intercept
 	real_vector* thisColumn = new real_vector();
-	push_back(NULL, thisColumn, INDICATOR);
+	push_back(NULL, thisColumn, DENSE);
 	int_vector* nullVector1 = new int_vector();
 	int_vector* nullVector2 = new int_vector();
-	entriesPresent.push_back(nullVector1);
 	entriesAbsent.push_back(nullVector2);
-	columnType.push_back("lr");
+	columnType.push_back("ls");
 	nMissingPerColumn.push_back(0);
 	drugMap.insert(make_pair(0,0));
 	indexToDrugIdMap.insert(make_pair(0,0));
 
 	int currentRow = 0;
+	nRows = 0;
 	int maxCol = 0;
 	while (getline(in, line) && (currentRow < MAX_ENTRIES)) {
 		if (!line.empty()) {
@@ -86,16 +86,17 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 			real thisY = static_cast<real>(atof(thisCovariate[0].c_str()));
 			y.push_back(thisY);
 
-			// Parse censoring index entry
-			real thisZ = static_cast<real>(atof(thisCovariate[1].c_str()));
-			z.push_back(thisZ);
+			// Parse censoring index entry if any
+			if(thisCovariate.size() == 2){
+				real thisZ = static_cast<real>(atof(thisCovariate[1].c_str()));
+				z.push_back(thisZ);
+			}
 
 			// Fix offs for CLR
 			offs.push_back(1);
 
 			//Fill intercept
 			data[0]->push_back(1.0);
-			entriesPresent[0]->push_back(currentRow);
 
 			// Parse covariates
 			for (int i = 0; i < (int)strVector.size() - 1; ++i){
@@ -108,96 +109,79 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 						drugMap.insert(make_pair(drug,maxCol));
 						indexToDrugIdMap.insert(make_pair(maxCol,drug));
 
+						int_vector* colInds = new int_vector();
 						real_vector* thisColumn = new real_vector();
-						push_back(NULL, thisColumn, INDICATOR);
-						int_vector* nullVector1 = new int_vector();
-						int_vector* nullVector2 = new int_vector();
-						entriesPresent.push_back(nullVector1);
-						entriesAbsent.push_back(nullVector2);
+						push_back(colInds, thisColumn, INDICATOR);
+						int_vector* nullVector = new int_vector();
+						entriesAbsent.push_back(nullVector);
 						columnType.push_back("lr");
 						nMissingPerColumn.push_back(0);
 					}
 					int col = drugMap[drug];
-					for(int j = (int)data[col]->size(); j < currentRow; j++){
-						data[col]->push_back(0.0);
-						entriesPresent[col]->push_back(j);
+					if(formatType[col] == DENSE){
+						for(int j = (int)data[col]->size(); j < currentRow; j++){
+							data[col]->push_back(0.0);
+						}
 					}
 					if(thisCovariate[1] == MISSING_STRING_1 || thisCovariate[1] == MISSING_STRING_2){
-						data[col]->push_back(0.0);
+						if(formatType[col] == DENSE){
+							data[col]->push_back(0.0);
+						}
 						entriesAbsent[col]->push_back(currentRow);
 						nMissingPerColumn[col]++;
 					}
 					else{
 						real value = static_cast<real>(atof(thisCovariate[1].c_str()));
-						data[col]->push_back(value);
-						entriesPresent[col]->push_back(currentRow);
-						if(value != 1.0 && value != 0.0)
-						{
-							columnType[col] = "ls";
-							formatType[col] = DENSE;
+						if(formatType[col] == DENSE){
+							data[col]->push_back(value);
 						}
-					}
-				}
-/*
-				for(int j = col; j <= drug; j++){
-					if(j > maxCol){
-						real_vector* thisColumn = new real_vector();
-						push_back(NULL, thisColumn, INDICATOR);
-						int_vector* nullVector1 = new int_vector();
-						int_vector* nullVector2 = new int_vector();
-						entriesPresent.push_back(nullVector1);
-						entriesAbsent.push_back(nullVector2);
-						columnType.push_back("lr");
-						nMissingPerColumn.push_back(0);
-						maxCol++;
-					}
-					if(j != drug){
-						data[j]->push_back(0.0);
-						entriesPresent[j]->push_back(currentRow);
-					}
-					else{
-						if(thisCovariate[1] == MISSING_STRING_1 || thisCovariate[1] == MISSING_STRING_2){
-							data[j]->push_back(0.0);
-							entriesAbsent[j]->push_back(currentRow);
-							nMissingPerColumn[j]++;
-						}
-						else{
-							real value = static_cast<real>(atof(thisCovariate[1].c_str()));
-							data[j]->push_back(value);
-							entriesPresent[j]->push_back(currentRow);
-							if(value != 1.0 && value != 0.0)
-							{
-								columnType[j] = "ls";
-								formatType[j] = DENSE;
+						else if(formatType[col] == INDICATOR){
+							if(value != 1.0 && value != 0.0){
+								columnType[col] = "ls";
+								if(columns[col]->size() > 0){
+									convertColumnToDense(col);
+								}
+								else{
+									delete columns[col];
+									columns[col] = NULL;
+								}
+								for(int j = (int)data[col]->size(); j < currentRow; j++){
+									data[col]->push_back(0.0);
+								}
+								data[col]->push_back(value);
+								formatType[col] = DENSE;
+							}
+							else{
+								if(value == 1.0){
+									columns[col]->push_back(currentRow);
+								}
 							}
 						}
 					}
 				}
-				col = drug + 1;
-				*/
 			}
 			currentRow++;
+			nRows++;
 		}
 	}
 
 	nPatients = numCases;
 	nCols = columns.size();
-	nRows = currentRow;
 	conditionId = "0";
 
 	nCols_ = nCols;
-	nRows_ = nRows;
 	y_ = y;
 
 	nevents.push_back(1); // Save last patient
 	
-	for(int j = 0; j < (int)columns.size(); j++){
-		for(int i = (int)data[j]->size(); i < nRows; i++){
-			data[j]->push_back(0.0);
-			entriesPresent[j]->push_back(i);
+	for(int j = 0; j < nCols; j++){
+		if(formatType[j] == DENSE){
+			for(int i = (int)data[j]->size(); i < nRows; i++){
+				data[j]->push_back(0.0);
+			}
 		}
 	}
-
+	/*
 	for(int j = 0; j < nCols; j++){
 		if(formatType[j] == INDICATOR){
 			if(columns[j])
@@ -211,7 +195,7 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 			data[j]->clear();
 		}
 	}
-
+	*/
 	int index = columns.size();
 
 #ifndef MY_RCPP_FLAG
@@ -242,17 +226,18 @@ void BBRImputeInputReader::writeFile(const char* fileName) {
 	out.open(fileName,ios::out);
 
 	vector<string> strVector;
-
 	for(int i = 0; i < nRows; i++){
 		vector<real> x(nCols);
 		getDataRow(i,&x[0]);
 		out << y_[i];
 		if((int)z.size() > 0)
 			out << ":" << z[i];
-		for(int j = 0; j < nCols; j++){
-			int col = reverseColIndices[drugMap[j]];
+		map<DrugIdType,int>::iterator it = drugMap.begin();
+		for(int j = 1; j < nCols; j++, *it++){
+			int drug = (*it).first;
+			int col = reverseColIndices[drugMap[drug]];
 			if(x[col] != 0.0)
-				out << " " << j << ":" << x[col];
+				out << " " << drug << ":" << x[col];
 		}
 		out << endl;
 	}

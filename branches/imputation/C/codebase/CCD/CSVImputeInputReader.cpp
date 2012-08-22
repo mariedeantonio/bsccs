@@ -74,7 +74,6 @@ void CSVImputeInputReader::readFile(const char* fileName) {
 					push_back(NULL, thisColumn, INDICATOR);
 					int_vector* nullVector1 = new int_vector();
 					int_vector* nullVector2 = new int_vector();
-					entriesPresent.push_back(nullVector1);
 					entriesAbsent.push_back(nullVector2);
 					columnType.push_back("lr");
 				}
@@ -118,7 +117,6 @@ void CSVImputeInputReader::readFile(const char* fileName) {
 				else{
 					real value = static_cast<real>(atof(strVector[2 + i].c_str()));
 					data[i]->push_back(value);
-					entriesPresent[i]->push_back(currentRow);
 					if(value != 1.0 && value != 0.0)
 					{
 						columnType[i] = "ls";
@@ -136,7 +134,6 @@ void CSVImputeInputReader::readFile(const char* fileName) {
 	conditionId = "0";
 
 	nCols_ = nCols;
-	nRows_ = nRows;
 	y_ = y;
 
 	nevents.push_back(1); // Save last patient

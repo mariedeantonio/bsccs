@@ -48,10 +48,8 @@ protected:
 	vector<int> reverseColIndices;
 	vector<real> y_;
 	vector<int_vector*> entriesAbsent;
-	vector<int_vector*> entriesPresent;
 
 	int nCols_;
-	int nRows_;
 };
 
 #endif /* IMPUTEINPUTREADER_H_ */

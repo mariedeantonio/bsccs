@@ -40,8 +40,7 @@ ImputeInputReader::~ImputeInputReader() { }
  */
 
 template <class InputIterator1, class InputIterator2>
-int set_intersection(InputIterator1 first1, InputIterator1 last1,
-	InputIterator2 first2, InputIterator2 last2)
+int set_intersection(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2)
 {
 	int result = 0;
 	while (first1!=last1 && first2!=last2)
@@ -59,6 +58,24 @@ int set_intersection(InputIterator1 first1, InputIterator1 last1,
 	return result;
 }
 
+template <class InputIterator1, class InputIterator2>
+int set_difference(InputIterator1 first1, InputIterator1 last1,	InputIterator2 first2, InputIterator2 last2)
+{
+	int result = last1 - first1;
+	while (first1!=last1 && first2!=last2)
+	{
+		if(*first1 < *first2)
+			++first1;
+		else if(*first2 < *first1) 
+			++first2;
+		else{ 
+			result--;
+			first1++; 
+			first2++; 
+		}
+	}
+	return result;
+}
 void ImputeInputReader::sortColumns(){
 	for(int i = 0; i < nCols; i++)
 		colIndices.push_back(i);
@@ -75,12 +92,10 @@ void ImputeInputReader::sortColumns(){
 	vector<real_vector*> tempData = data;
 	vector<int_vector*> colData = columns;
 	vector<int_vector*> entriesAbsent_ = entriesAbsent;
-	vector<int_vector*> entriesPresent_ = entriesPresent;
 	for(int i = 0; i < nCols; i++)
 	{
 		data[i] = tempData[colIndices[i]];
 		columns[i] = colData[colIndices[i]];
-		entriesPresent[i] = entriesPresent_[colIndices[i]];
 		entriesAbsent[i] = entriesAbsent_[colIndices[i]];
 	}
 }
@@ -95,10 +110,10 @@ vector<int> ImputeInputReader::getnMissingPerColumn(){
 void ImputeInputReader::setupDataForImputation(int col, vector<real>& weights){
 	y.clear();
 	weights.clear();
-	y.resize(nRows_,0.0);
-	weights.resize(nRows_,1.0);
+	y.resize(nRows,0.0);
+	weights.resize(nRows,1.0);
 	if(formatType[col] == DENSE){
-		for(int i = 0; i < nRows_; i++)
+		for(int i = 0; i < nRows; i++)
 			y[i] = data[col]->at(i);
 	}
 	else{
@@ -134,24 +149,18 @@ void ImputeInputReader::resetData(){
 	for(int j = 0; j < nCols; j++){
 		if(formatType[j] == INDICATOR){
 			int lastit = 0;
-			vector<int>::iterator it1 = entriesPresent[j]->begin();
+			vector<int>::iterator it1 = entriesAbsent[j]->begin();
 			vector<int>::iterator it2 = columns[j]->begin();
-			while(it1 < entriesPresent[j]->end() && it2 < columns[j]->end()){
+			while(it1 < entriesAbsent[j]->end() && it2 < columns[j]->end()){
 				if(*it1 < *it2)
 					it1++;
 				else if(*it2 < *it1){
+					it2++;
+				}
+				else{
 					columns[j]->erase(it2);
 					it2 = columns[j]->begin() + lastit;
 				}
-				else{
-					it1++;
-					it2++;
-					lastit++;
-				}
-			}
-			while(it2 < columns[j]->end()){
-				columns[j]->erase(it2);
-				it2 = columns[j]->begin() + lastit;
 			}
 		}
 	}
@@ -161,18 +170,22 @@ void ImputeInputReader::getSampleMeanVariance(int col, real* Xmean, real* Xvar){
 	for(int j = 0; j < col; j++){
 		real sumx2 = 0.0;
 		real sumx = 0.0;
-		int n = (int)entriesPresent[col]->size();
-		if(formatType[j] == DENSE){
-			for(int i = 0; i < n; i++){
-				real xi;
-				xi = data[j]->at(entriesPresent[col]->at(i));
+		int n = nRows - (int)entriesAbsent[col]->size();
+		if(formatType[j] == DENSE) {
+			int ind = 0;
+			for(int i = 0; i < nRows; i++){
+				if(ind < (int)entriesAbsent[col]->size()){
+					if(i == entriesAbsent[col]->at(ind)){
+						ind++;
+					}
+				}
+				real xi = data[j]->at(i);
 				sumx2 += xi * xi;
 				sumx += xi;
 			}
 		}
 		else{
-			sumx = set_intersection(entriesPresent[col]->begin(), entriesPresent[col]->end(), 
-				columns[j]->begin(),columns[j]->end());
+			sumx = set_difference(columns[j]->begin(), columns[j]->end(), entriesAbsent[col]->begin(), entriesAbsent[col]->end());
 			sumx2 = sumx;
 		}
 		Xmean[j] = sumx/n;
@@ -208,9 +221,11 @@ void ImputeInputReader::updateColumnVector(int col, vector<int> appendY){
 	for(int i = 0; i < (int)appendY.size(); i++)
 	{
 		vector<int>::iterator it = columns[col]->begin() + lastit;
-		while(*it < appendY[i]){
-			it++;
-			lastit++;
+		if(columns[col]->size() > 0){
+			while(*it < appendY[i]){
+				it++;
+				lastit++;
+			}
 		}
 		columns[col]->insert(it,appendY[i]);
 	}

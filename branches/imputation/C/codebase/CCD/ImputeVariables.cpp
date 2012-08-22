@@ -87,10 +87,20 @@ void ImputeVariables::impute(CCDArguments arguments){
 	
 	vector<int> nMissingPerColumn = reader->getnMissingPerColumn();
 	vector<string> columnTypes = reader->getColumnTypesToImpute();
+
+	int nColsToImpute = 0;
+	for(int j = 0; j < (int)nMissingPerColumn.size(); j++){
+		if(nMissingPerColumn[j] > 0){
+			nColsToImpute++;
+		}
+	}
 	
+	cout << "Total columns to impute = " << nColsToImpute << endl;
+
 	for(int i = 0; i < nImputations; i++){
 		for(int j = 0; j < (int)nMissingPerColumn.size(); j++){
 			if(nMissingPerColumn[j] > 0){
+				cout << "Imputing column " << j - ((int)nMissingPerColumn.size() - nColsToImpute) << endl;
 				vector<real> weights;
 				reader->setupDataForImputation(j,weights);
 				if(columnTypes[j]=="ls")	//Least Squares
@@ -168,7 +178,7 @@ void ImputeVariables::randomizeImputationsLR(real* yPred, real* weights, int col
 		for(int i = 0; i < nRows; i++){
 			if(weights[i]){
 				real r = (real)rand()/RAND_MAX;
-				if(yPred[i] < r)
+				if(r < yPred[i])
 					y.push_back(i);
 			}
 		}
@@ -179,7 +189,7 @@ void ImputeVariables::randomizeImputationsLR(real* yPred, real* weights, int col
 		for(int i = 0; i < reader->getNumberOfRows(); i++){
 			if(weights[i]){
 				real r = (real)rand()/RAND_MAX;
-				if(yPred[i] < r)
+				if(r < yPred[i])
 					y[i] = 1.0;
 				else
 					y[i] = 0.0;

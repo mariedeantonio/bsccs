@@ -13,6 +13,8 @@
 
 #include "CrossValidationDriver.h"
 
+namespace bsccs {
+
 CrossValidationDriver::CrossValidationDriver(
 			int iGridSize,
 			double iLowerLimit,
@@ -56,7 +58,8 @@ void CrossValidationDriver::logResults(const CCDArguments& arguments) {
 
 	double maxPoint;
 	double maxValue;
-	findMax(&maxPoint, &maxValue);
+	double minValue;
+	findMax(&maxPoint, &maxValue, &minValue);
 
 	for (int i = 0; i < gridPoint.size(); i++) {
 		outLog << std::setw(5) << std::setprecision(4) << std::fixed << gridPoint[i] << sep;
@@ -79,7 +82,8 @@ void CrossValidationDriver::resetForOptimal(
 
 	double maxPoint;
 	double maxValue;
-	findMax(&maxPoint, &maxValue);
+	double minValue;
+	findMax(&maxPoint, &maxValue, &minValue);
 	ccd.setHyperprior(maxPoint);
 	ccd.resetBeta(); // Cold-start
 }
@@ -109,7 +113,7 @@ void CrossValidationDriver::changeParameter(CyclicCoordinateDescent &ccd, int va
 double CrossValidationDriver::oneFoldCrossValidation(CyclicCoordinateDescent& ccd,
 		AbstractSelector& selector,
 		const CCDArguments& arguments,
-		int i, vector<real> weights,
+		int i, vector<bsccs::real> weights,
 		int step, int point) {
 
 	int fold = i % arguments.fold;
@@ -164,7 +168,7 @@ void CrossValidationDriver::greedyDrive(CyclicCoordinateDescent& ccd,
 		// For each variance...
 		for (int varianceIndex = 0; varianceIndex < varianceVector.size(); varianceIndex++) {
 
-			std::vector<real> weights;
+			std::vector<bsccs::real> weights;
 			std::vector<double> points;
 			std::vector<double> values;
 
@@ -202,7 +206,7 @@ void CrossValidationDriver::greedyDrive(CyclicCoordinateDescent& ccd,
 			cout << endl;
 			cout << endl;
 			double testValue = storedMaxValue - maxValue;
-			if (testValue*testValue < 100) {
+			if (testValue*testValue < 10) {
 				finished = true;
 			}
 			if (count + varianceIndex == 0 || maxValue > storedMaxValue){
@@ -219,10 +223,11 @@ void CrossValidationDriver::hierarchyDrive(CyclicCoordinateDescent& ccd,
 		AbstractSelector& selector,
 		const CCDArguments& arguments) {
 
-	std::vector<real> weights;
+	std::vector<bsccs::real> weights;
 	std::vector<double> outerPoints;
 	std::vector<double> innerPoints;
 	std::vector<double> outerValues;
+	std::vector<double> minValues;
 	for (int outerStep = 0; outerStep < gridSize; outerStep++){
 		std::vector<double> predLogLikelihoodOuter;
 		double outerPoint = computeGridPoint(outerStep);
@@ -269,16 +274,20 @@ void CrossValidationDriver::hierarchyDrive(CyclicCoordinateDescent& ccd,
 		// Report results
 		double maxPoint;
 		double maxValue;
-		findMax(&maxPoint, &maxValue);
+		double minValue;
+		findMax(&maxPoint, &maxValue, &minValue);
+		minValues.push_back(minValue);
 
 		innerPoints.push_back(maxPoint);
 		outerPoints.push_back(outerPoint);
 		outerValues.push_back(maxValue);
-/*
+
+
+
 		std::cout << std::endl;
 		std::cout << "Maximum predicted log likelihood (" << maxValue << ") found at:" << std::endl;
 		std::cout << "\t" << maxPoint << " (variance)" << std::endl;
-		*/
+
 		if (!arguments.useNormalPrior) {
 			double lambda = convertVarianceToHyperparameter(maxPoint);
 			std::cout << "\t" << lambda << " (lambda)" << std::endl;
@@ -296,6 +305,7 @@ void CrossValidationDriver::hierarchyDrive(CyclicCoordinateDescent& ccd,
 			outerMaxPoint = outerPoints[i];
 			innerMaxPoint = innerPoints[i];
 		}
+		cout << minValues[i] << endl;
 	}
 	std::cout << std::endl;
 	std::cout << "Maximum predicted log likelihood (" << outerMaxValue << ") found at:" << std::endl;
@@ -310,7 +320,7 @@ void CrossValidationDriver::drive(
 
 	// TODO Check that selector is type of CrossValidationSelector
 
-	std::vector<real> weights;
+	std::vector<bsccs::real> weights;
 
 	for (int step = 0; step < gridSize; step++) {
 
@@ -334,12 +344,12 @@ void CrossValidationDriver::drive(
 			// Compute predictive loglikelihood for this fold
 			selector.getComplement(weights);
 			double logLikelihood = ccd.getPredictiveLogLikelihood(&weights[0]);
-
+/*
 			std::cout << "Grid-point #" << (step + 1) << " at " << point;
 			std::cout << "\tFold #" << (fold + 1)
 			          << " Rep #" << (i / arguments.fold + 1) << " pred log like = "
 			          << logLikelihood << std::endl;
-
+*/
 			// Store value
 			predLogLikelihood.push_back(logLikelihood);
 		}
@@ -353,11 +363,13 @@ void CrossValidationDriver::drive(
 	// Report results
 	double maxPoint;
 	double maxValue;
-	findMax(&maxPoint, &maxValue);
+	double minValue;
+	findMax(&maxPoint, &maxValue, &minValue);
 
 	std::cout << std::endl;
 	std::cout << "Maximum predicted log likelihood (" << maxValue << ") found at:" << std::endl;
 	std::cout << "\t" << maxPoint << " (variance)" << std::endl;
+
 	if (!arguments.useNormalPrior) {
 		double lambda = convertVarianceToHyperparameter(maxPoint);
 		std::cout << "\t" << lambda << " (lambda)" << std::endl;
@@ -366,15 +378,22 @@ void CrossValidationDriver::drive(
 }
 
 
-void CrossValidationDriver::findMax(double* maxPoint, double* maxValue) {
+void CrossValidationDriver::findMax(double* maxPoint, double* maxValue, double* minValue) {
 
 	*maxPoint = gridPoint[0];
 	*maxValue = gridValue[0];
 	for (int i = 1; i < gridPoint.size(); i++) {
+		//cout << "MaxValues i =" << gridValue[i] << endl;
 		if (gridValue[i] > *maxValue) {
 			*maxPoint = gridPoint[i];
 			*maxValue = gridValue[i];
 		}
+		if (gridValue[i] < *minValue){
+			*minValue = gridValue[i];
+		}
 	}
+	cout << "Max = " << *maxValue << endl;
+	cout << "Min = " << *minValue << endl;
+}
 }
 

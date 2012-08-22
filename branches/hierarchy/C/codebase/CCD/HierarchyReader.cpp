@@ -33,7 +33,7 @@
 
 using namespace std;
 
-
+namespace bsccs {
 HierarchyReader::HierarchyReader() {
 
 }
@@ -80,5 +80,6 @@ HierarchyReader::HierarchyReader(const char* fileName, map<int, int> &drugIdToIn
 			}
 		}
 	}
+}
 }
 

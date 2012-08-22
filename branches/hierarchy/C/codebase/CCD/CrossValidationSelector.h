@@ -13,6 +13,8 @@
 
 #include "AbstractSelector.h"
 
+namespace bsccs {
+
 class CrossValidationSelector : public AbstractSelector {
 public:
 	CrossValidationSelector(
@@ -25,14 +27,14 @@ public:
 
 	void permute();
 
-	void getWeights(int batch, std::vector<real>& weights);
+	void getWeights(int batch, std::vector<bsccs::real>& weights);
 
-	void getComplement(std::vector<real>& weights);
+	void getComplement(std::vector<bsccs::real>& weights);
 
 private:
 	int fold;
 	std::vector<int> permutation;
 	std::vector<int> intervalStart;
 };
-
+}
 #endif /* CROSSVALIDATION_H_ */

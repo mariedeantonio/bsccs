@@ -12,6 +12,7 @@
 #include "CrossValidationSelector.h"
 #include "ccd.h"
 
+namespace bsccs {
 class AbstractDriver {
 public:
 	AbstractDriver();
@@ -25,5 +26,6 @@ public:
 
 	virtual void logResults(const CCDArguments& arguments) = 0; // pure virtual
 };
+}
 
 #endif /* ABSTRACTDRIVER_H_ */

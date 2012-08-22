@@ -16,6 +16,8 @@
 
 using namespace std;
 
+namespace bsccs {
+
 #define DEBUG
 
 #ifdef DOUBLE_PRECISION
@@ -55,5 +57,5 @@ protected:
 //	std::vector<int> ptrStart;
 
 };
-
+}
 #endif /* COMPRESSEDINDICATORMATRIX_H_ */

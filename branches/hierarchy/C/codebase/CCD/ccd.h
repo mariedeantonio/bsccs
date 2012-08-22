@@ -13,6 +13,7 @@
 
 #include "CyclicCoordinateDescent.h"
 
+using namespace bsccs;
 
 struct CCDArguments {
 
@@ -46,6 +47,7 @@ struct CCDArguments {
 	// Needed for boot-strapping
 	bool doBootstrap;
 	bool reportRawEstimates;
+	bool BCaBootstrapCI;
 	int replicates;
 	std::string bsFileName;
 };
@@ -79,3 +81,6 @@ double calculateSeconds(
 		const struct timeval &time2);
 
 #endif /* CCD_H_ */
+
+
+

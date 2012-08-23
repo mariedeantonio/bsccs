@@ -16,7 +16,7 @@
 #include <set>
 
 #include "CyclicCoordinateDescent.h"
-#include "InputReader.h"
+#include "io/InputReader.h"
 #include "Iterators.h"
 
 //#ifdef MY_RCPP_FLAG
@@ -46,7 +46,7 @@ void compareIntVector(int* vec0, int* vec1, int dim, const char* name) {
 }
 
 CyclicCoordinateDescent::CyclicCoordinateDescent(
-			InputReader* reader,
+			ModelData* reader,
 			AbstractModelSpecifics& specifics
 //			ModelSpecifics<DefaultModel>& specifics
 		) : modelSpecifics(specifics) {
@@ -55,7 +55,7 @@ CyclicCoordinateDescent::CyclicCoordinateDescent(
 	J = reader->getNumberOfColumns();
 
 	hXI = reader;
-	hY = reader->getYVector();
+	hY = reader->getYVector(); // TODO Delegate all data to ModelSpecifics
 	hOffs = reader->getOffsetVector();
 	hNEvents = NULL;
 	hPid = reader->getPidVector();
@@ -275,7 +275,7 @@ void CyclicCoordinateDescent::logResults(const char* fileName) {
 		exit(-1);
 	}
 
-	InputReader* reader = dynamic_cast<InputReader*>(hXI);
+	ModelData* reader = dynamic_cast<ModelData*>(hXI);
 	map<int, DrugIdType> drugMap = reader->getDrugNameMap();
 
 	string sep(","); // TODO Make option
@@ -500,7 +500,7 @@ void CyclicCoordinateDescent::update(
 				updateSufficientStatistics(delta, index);
 			}
 			
-			if ((index+1) % 100000 == 0) {
+			if ((index+1) % 100 == 0) {
 				cout << "Finished variable " << (index+1) << endl;
 			}
 			

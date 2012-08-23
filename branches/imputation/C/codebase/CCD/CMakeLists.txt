@@ -72,14 +72,15 @@ set(SOURCE_FILES
 	ccd.cpp
 	CyclicCoordinateDescent.cpp	
 	CompressedDataMatrix.cpp
-	InputReader.cpp
-	SCCSInputReader.cpp
-	CLRInputReader.cpp
-	RTestInputReader.cpp
-	CCTestInputReader.cpp
-	ImputeInputReader.cpp
-	CSVImputeInputReader.cpp
-	BBRImputeInputReader.cpp
+	ModelData.cpp
+	io/InputReader.cpp
+	io/SCCSInputReader.cpp
+	io/CLRInputReader.cpp
+	io/RTestInputReader.cpp
+	io/CoxInputReader.cpp
+	io/CCTestInputReader.cpp
+	io/CSVImputeInputReader.cpp
+	io/BBRImputeInputReader.cpp
 	AbstractModelSpecifics.cpp
 	AbstractDriver.cpp
 	AbstractSelector.cpp
@@ -88,6 +89,7 @@ set(SOURCE_FILES
 	CrossValidationDriver.cpp
 	BootstrapSelector.cpp
 	BootstrapDriver.cpp
+	ImputeInputReader.cpp
 	ImputeVariables.cpp)
 	
 if(CUDA_FOUND)

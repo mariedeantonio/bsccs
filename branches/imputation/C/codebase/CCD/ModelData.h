@@ -1,12 +1,12 @@
 /*
- * InputReader.h
+ * ModelData.h
  *
- *  Created on: May-June, 2010
+ *  Created on: August, 2012
  *      Author: msuchard
  */
 
-#ifndef INPUTREADER_H_
-#define INPUTREADER_H_
+#ifndef MODELDATA_H_
+#define MODELDATA_H_
 
 #include <iostream>
 #include <fstream>
@@ -20,17 +20,6 @@ using std::string;
 using std::vector;
 using std::stringstream;
 
-#ifdef MY_RCPP_FLAG
-	#include <R.h>
-//// For OSX 10.6, R is built with 4.2.1 which has a bug in stringstream
-//stringstream& operator>> (stringstream &in, int &out) {
-//	string entry;
-//	in >> entry;
-//	out = atoi(entry.c_str());
-//	return in;
-//}
-#endif
-
 #include "CompressedDataMatrix.h"
 
 //#define USE_DRUG_STRING
@@ -41,10 +30,10 @@ using std::stringstream;
 	typedef int DrugIdType;
 #endif
 
-class InputReader: public CompressedDataMatrix {
+class ModelData : public CompressedDataMatrix {
 public:
-	InputReader();
-	virtual ~InputReader();
+	ModelData();
+	virtual ~ModelData();
 
 	int* getPidVector();
 	real* getYVector();
@@ -55,9 +44,26 @@ public:
 	string getConditionId();
 	std::vector<int>* getPidVectorSTL();
 
-	virtual void readFile(const char* fileName) = 0;
+	const std::vector<real>& getZVectorRef() const {
+		return z;
+	}
 
-protected:
+	const std::vector<real>& getYVectorRef() const {
+		return y;
+	}
+
+	const std::vector<int>& getPidVectorRef() const {
+		return pid;
+	}
+	
+	// TODO Improve encapsulation
+	friend class SCCSInputReader;
+	friend class CLRInputReader;
+	friend class RTestInputReader;
+	friend class CoxInputReader;
+	friend class CCTestInputReader;
+
+private:
 
 	template <class T>
 	T* makeDeepCopy(T *original, unsigned int length) {
@@ -65,12 +71,6 @@ protected:
 		memcpy(copy, original, length * sizeof(T));
 		return copy;
 	}
-
-	bool listContains(const vector<DrugIdType>& list, DrugIdType value);
-
-	void split( vector<string> & theStringVector,
-	       const  string  & theString,
-	       const  string  & theDelimiter);
 
 	int nPatients;
 	vector<int> pid;
@@ -83,4 +83,4 @@ protected:
 	string conditionId;
 };
 
-#endif /* INPUTREADER_H_ */
+#endif /* MODELDATA_H_ */

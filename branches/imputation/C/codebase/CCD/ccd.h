@@ -79,7 +79,7 @@ void parseCommandLine(
 		CCDArguments& arguments);
 
 double initializeModel(
-		InputReader** reader,
+		ModelData** modelData,
 		CyclicCoordinateDescent** ccd,
 //		ModelSpecifics<DefaultModel>** model,
 		AbstractModelSpecifics** model,
@@ -91,12 +91,12 @@ double fitModel(
 
 double runCrossValidation(
 		CyclicCoordinateDescent *ccd,
-		InputReader *reader,
+		ModelData *modelData,
 		CCDArguments &arguments);
 
 double runBoostrap(
 		CyclicCoordinateDescent *ccd,
-		InputReader *reader,
+		ModelData *modelData,
 		CCDArguments &arguments);
 
 double calculateSeconds(

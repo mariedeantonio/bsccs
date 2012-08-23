@@ -19,10 +19,9 @@
 using std::cout;
 using std::cerr;
 using std::endl;
-//using std::in;
 using std::ifstream;
 
-#define DEBUG
+//#define DATA_AOS
 
 #ifdef DOUBLE_PRECISION
 	typedef double real;
@@ -37,6 +36,73 @@ enum FormatType {
 	DENSE, SPARSE, INDICATOR
 };
 
+class CompressedDataColumn {
+public:
+	CompressedDataColumn(int_vector* colIndices, real_vector* colData, FormatType colFormat,
+			std::string colName = "") :
+		 columns(colIndices), data(colData), formatType(colFormat), name(colName) {
+		// Do nothing
+	}	
+	
+	virtual ~CompressedDataColumn() {
+		if (columns) {
+			delete columns;
+		}
+		if (data) {
+			delete data;
+		}
+	}
+	
+	int* getColumns() const {
+		return static_cast<int*>(columns->data());
+	}
+	
+	real* getData() const {
+		return static_cast<real*>(data->data());
+	}
+	
+	FormatType getFormatType() const {
+		return formatType;
+	}
+	
+	const std::string& getName() const {
+		return name;
+	}
+
+	int getNumberOfEntries() const {
+		return columns->size();
+	}
+
+	void add_data(int row, real value) {
+		if (formatType == DENSE) {
+			data->push_back(value);
+			// TODO Make sure we are at the correct row
+		} else if (formatType == SPARSE) {
+			if (value != static_cast<real> (0)) {
+				data->push_back(value);
+				columns->push_back(row);
+			}
+		} else if (formatType == INDICATOR) {
+			if (value != static_cast<real> (0)) {
+				columns->push_back(row);
+			}
+		} else {
+			cerr << "Error" << endl;
+			exit(-1);
+		}
+	}
+	
+private:
+	// Disable copy-constructors
+	CompressedDataColumn();
+	CompressedDataColumn(const CompressedDataColumn&);
+	
+	int_vector* columns;
+	real_vector* data;
+	FormatType formatType;
+	std::string name;
+};
+
 class CompressedDataMatrix {
 
 public:
@@ -49,7 +115,7 @@ public:
 	
 	int getNumberOfRows(void) const;
 	
-	int getNumberOfColumns(void);
+	int getNumberOfColumns(void) const;
 
 	int getNumberOfEntries(int column) const;
 
@@ -80,9 +146,13 @@ protected:
 	void allocateMemory(int nCols);
 
 	void push_back(int_vector* colIndices, real_vector* colData, FormatType colFormat) {
+#ifdef DATA_AOS
+		allColumns.push_back(new CompressedDataColumn(colIndices, colData, colFormat));
+#else
 		columns.push_back(colIndices);
 		data.push_back(colData);
 		formatType.push_back(colFormat);
+#endif
 	}
 
 	void push_back(FormatType colFormat) {
@@ -103,6 +173,9 @@ protected:
 	}
 
 	void add_data(int column, int row, real value) {
+#ifdef DATA_AOS		
+		allColumns[column]->add_data(row, value);
+#else
 		FormatType colFormat = getFormatType(column);
 		if (colFormat == DENSE) {
 			data[column]->push_back(value);
@@ -119,9 +192,16 @@ protected:
 			cerr << "Error" << endl;
 			exit(-1);
 		}
+#endif
 	}
 
 	void erase(int column) {
+#ifdef DATA_AOS
+		if (allColumns[column]) {
+			delete allColumns[column];
+		}
+		allColumns.erase(allColumns.begin() + column);
+#else
 		if (columns[column]) {
 			delete columns[column];
 		}
@@ -131,6 +211,7 @@ protected:
 		}
 		data.erase(data.begin() + column);
 		formatType.erase(formatType.begin() + column);
+#endif
 	}
 
 //private:
@@ -138,9 +219,13 @@ protected:
 	int nCols;
 	int nEntries;
 
+#ifdef DATA_AOS
+	std::vector<CompressedDataColumn*> allColumns;
+#else
 	std::vector<int_vector*> columns;
 	std::vector<real_vector*> data;
 	std::vector<FormatType> formatType;
+#endif
 
 //	std::vector<int> rows;  // standard CSC representation
 //	std::vector<int> ptrStart;

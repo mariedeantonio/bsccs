@@ -12,6 +12,7 @@
 #include <cmath>
 
 class CompressedDataMatrix;  // forward declaration
+class ModelData; // forward declaration
 
 #ifdef DOUBLE_PRECISION
 	typedef double real;
@@ -19,9 +20,16 @@ class CompressedDataMatrix;  // forward declaration
 	typedef float real;
 #endif
 
+//#define DEBUG_COX // Uncomment to get output for Cox model
+
 class AbstractModelSpecifics {
 public:
-	AbstractModelSpecifics();
+//	AbstractModelSpecifics(
+//			const std::vector<real>& y,
+//			const std::vector<real>& z);
+
+	AbstractModelSpecifics(const ModelData& intput);
+
 	virtual ~AbstractModelSpecifics();
 
 	void initialize(
@@ -58,9 +66,9 @@ public:
 
 	virtual double getPredictiveLogLikelihood(real* weights) = 0; // pure virtual
 
-	virtual void getPredictiveEstimates(real* y, real* weights) = 0; // pure virtual
+    virtual void getPredictiveEstimates(real* y, real* weights) = 0; // pure virtual
 
-	virtual void sortPid(bool useCrossValidation) = 0; // pure virtual
+//	virtual void sortPid(bool useCrossValidation) = 0; // pure virtual
 
 protected:
 
@@ -80,11 +88,18 @@ protected:
 		fillVector(vector, length, T());
 	}
 
+	const std::vector<real>& oY;
+	const std::vector<real>& oZ;
+	const std::vector<int>& oPid;
+
+	std::vector<real> accDenomPid;
+
 	// TODO Currently constructed in CyclicCoordinateDescent, but should be encapsulated here
 	CompressedDataMatrix* hXI; // K-by-J-indicator matrix
 
 	int* hOffs;  // K-vector
 	real* hY; // K-vector
+	real* hZ; // K-vector
 
 	int* hPid; // K-vector
 	int** hXColumnRowIndicators; // J-vector

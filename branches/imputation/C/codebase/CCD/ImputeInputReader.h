@@ -8,7 +8,7 @@
 #ifndef IMPUTEINPUTREADER_H_
 #define IMPUTEINPUTREADER_H_
 
-#include "InputReader.h"
+#include "io/InputReader.h"
 
 class Compare{
 	vector<int>& _vec;

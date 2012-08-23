@@ -6,8 +6,8 @@
  */
 
 #include "ImputeVariables.h"
-#include "CSVImputeInputReader.h"
-#include "BBRImputeInputReader.h"
+#include "io/CSVImputeInputReader.h"
+#include "io/BBRImputeInputReader.h"
 #include <time.h>
 
 double randn_notrig(double mu=0.0, double sigma=1.0) {

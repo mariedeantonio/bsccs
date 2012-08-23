@@ -28,7 +28,7 @@
 
 using namespace std;
 
-ImputeInputReader::ImputeInputReader() : InputReader() { }
+ImputeInputReader::ImputeInputReader(){ }
 
 ImputeInputReader::~ImputeInputReader() { }
 
@@ -76,7 +76,7 @@ int set_difference(InputIterator1 first1, InputIterator1 last1,	InputIterator2 f
 	}
 	return result;
 }
-void ImputeInputReader::sortColumns(){
+void ImputeInputReader::sortColumns(vector<real_vector*>& data, vector<int_vector*>& columns, vector<FormatType>& formatType, int& nCols){
 	for(int i = 0; i < nCols; i++)
 		colIndices.push_back(i);
 	sort(colIndices.begin(),colIndices.end(),Compare(nMissingPerColumn));
@@ -107,7 +107,7 @@ vector<int> ImputeInputReader::getnMissingPerColumn(){
 	return nMissingPerColumn;
 }
 
-void ImputeInputReader::setupDataForImputation(int col, vector<real>& weights){
+void ImputeInputReader::setupDataForImputation(int col, vector<real>& weights, vector<real>& y, vector<real_vector*>& data, vector<int_vector*>& columns, vector<FormatType>& formatType, int& nRows, int& nCols){
 	y.clear();
 	weights.clear();
 	y.resize(nRows,0.0);
@@ -139,13 +139,13 @@ void ImputeInputReader::setupDataForImputation(int col, vector<real>& weights){
 */
 }
 
-void ImputeInputReader::resetParams(){
+void ImputeInputReader::resetParams(vector<real> y, int& nCols){
 	y.clear();
 	nCols = nCols_;
 	y = y_;
 }
 
-void ImputeInputReader::resetData(){
+void ImputeInputReader::resetData(vector<int_vector*>& columns, vector<FormatType>& formatType, int& nCols){
 	for(int j = 0; j < nCols; j++){
 		if(formatType[j] == INDICATOR){
 			int lastit = 0;
@@ -166,7 +166,7 @@ void ImputeInputReader::resetData(){
 	}
 }
 
-void ImputeInputReader::getSampleMeanVariance(int col, real* Xmean, real* Xvar){
+void ImputeInputReader::getSampleMeanVariance(int col, real* Xmean, real* Xvar, vector<real_vector*>& data, vector<int_vector*>& columns, vector<FormatType>& formatType, int& nRows){
 	for(int j = 0; j < col; j++){
 		real sumx2 = 0.0;
 		real sumx = 0.0;
@@ -193,7 +193,7 @@ void ImputeInputReader::getSampleMeanVariance(int col, real* Xmean, real* Xvar){
 	}
 }
 
-real* ImputeInputReader::getDataRow(int row, real* x){
+real* ImputeInputReader::getDataRow(int row, real* x, vector<real_vector*>& data, vector<int_vector*>& columns, vector<FormatType>& formatType, int& nCols){
 	for(int j = 0; j < nCols; j++)
 	{
 		if(formatType[j] == DENSE)
@@ -215,7 +215,7 @@ real* ImputeInputReader::getDataRow(int row, real* x){
 	return x;
 }
 
-void ImputeInputReader::updateColumnVector(int col, vector<int> appendY){
+void ImputeInputReader::updateColumnVector(int col, vector<int> appendY, vector<int_vector*>& columns){
 	int lastit = 0;
 	int p = columns[col]->size() + appendY.size();
 	for(int i = 0; i < (int)appendY.size(); i++)

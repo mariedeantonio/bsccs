@@ -35,6 +35,8 @@ protected:
 
 	double getPredictiveLogLikelihood(real* weights);
 
+	void getPredictiveEstimates(real* y, real* weights);
+
 	bool allocateXjY(void);
 
 	bool allocateXjX(void);

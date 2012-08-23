@@ -19,16 +19,15 @@ public:
 	}
 };
 
-class ImputeInputReader : public InputReader {
+class ImputeInputReader{
 public:
 	ImputeInputReader();
 	virtual ~ImputeInputReader();
 
-	virtual void writeFile(const char* fileName) = 0;
-	void sortColumns();
+	void sortColumns(vector<real_vector*>& data, vector<int_vector*>& columns, vector<FormatType>& formatType, int& nCols);
 	vector<string> getColumnTypesToImpute();
 	vector<int> getnMissingPerColumn();
-	void setupDataForImputation(int col,vector<real>& weights);
+	void setupDataForImputation(int col, vector<real>& weights, vector<real>& y, vector<real_vector*>& data, vector<int_vector*>& columns, vector<FormatType>& formatType, int& nRows, int& nCols);
 	template <class T> void reindexVector(vector<T>& vec, vector<int> ind) {
 		int n = (int) vec.size();
 		vector<T> temp = vec;
@@ -36,11 +35,11 @@ public:
 			vec[i] = temp[ind[i]];
 		}
 	}
-	void resetParams();
-	void resetData();
-	void getSampleMeanVariance(int col, real* Xmean, real* Xvar);
-	real* getDataRow(int row, real* x);
-	void updateColumnVector(int col, vector<int> appendY);
+	void resetParams(vector<real> y, int& nCols);
+	void resetData(vector<int_vector*>& columns, vector<FormatType>& formatType, int& nCols);
+	void getSampleMeanVariance(int col, real* Xmean, real* Xvar, vector<real_vector*>& data, vector<int_vector*>& columns, vector<FormatType>& formatType, int& nRows);
+	real* getDataRow(int row, real* x, vector<real_vector*>& data, vector<int_vector*>& columns, vector<FormatType>& formatType, int& nCols);
+	void updateColumnVector(int col, vector<int> appendY, vector<int_vector*>& columns);
 protected:
 	vector<string> columnType;
 	vector<int> nMissingPerColumn;

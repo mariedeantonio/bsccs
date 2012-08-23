@@ -8,15 +8,16 @@
 #ifndef BBRIMPUTEINPUTREADER_H_
 #define BBRIMPUTEINPUTREADER_H_
 
+#include "InputReader.h"
 #include "ImputeInputReader.h"
 
-class BBRImputeInputReader : public ImputeInputReader {
+class BBRImputeInputReader : public InputReader, public ImputeInputReader {
 public:
 	BBRImputeInputReader();
 	virtual ~BBRImputeInputReader();
 
-	void readFile(const char* fileName);
-	void writeFile(const char* fileName);
+	virtual void readFile(const char* fileName);
+//	void writeFile(const char* fileName);
 };
 
 #endif /* BBRIMPUTEINPUTREADER_H_ */

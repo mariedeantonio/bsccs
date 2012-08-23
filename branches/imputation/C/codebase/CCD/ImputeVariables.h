@@ -23,7 +23,7 @@ public:
 private:
 	CyclicCoordinateDescent*  ccd;
 	AbstractModelSpecifics* model;
-	ImputeInputReader* reader;
+	InputReader* reader;
 	int nImputations;
 };
 

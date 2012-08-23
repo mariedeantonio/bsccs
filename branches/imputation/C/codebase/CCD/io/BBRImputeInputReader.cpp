@@ -29,7 +29,7 @@
 
 using namespace std;
 
-BBRImputeInputReader::BBRImputeInputReader() : ImputeInputReader() { }
+BBRImputeInputReader::BBRImputeInputReader() : InputReader(), ImputeInputReader() { }
 
 BBRImputeInputReader::~BBRImputeInputReader() { }
 
@@ -57,17 +57,17 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 
 	// Allocate a column for intercept
 	real_vector* thisColumn = new real_vector();
-	push_back(NULL, thisColumn, DENSE);
+	modelData->push_back(NULL, thisColumn, DENSE);
 	int_vector* nullVector1 = new int_vector();
 	int_vector* nullVector2 = new int_vector();
 	entriesAbsent.push_back(nullVector2);
 	columnType.push_back("ls");
 	nMissingPerColumn.push_back(0);
-	drugMap.insert(make_pair(0,0));
-	indexToDrugIdMap.insert(make_pair(0,0));
+	modelData->drugMap.insert(make_pair(0,0));
+	modelData->indexToDrugIdMap.insert(make_pair(0,0));
 
 	int currentRow = 0;
-	nRows = 0;
+	modelData->nRows = 0;
 	int maxCol = 0;
 	while (getline(in, line) && (currentRow < MAX_ENTRIES)) {
 		if (!line.empty()) {
@@ -75,28 +75,28 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 			strVector.clear();
 			split(strVector, line, outerDelimiter);
 
-			nevents.push_back(1);
+			modelData->nevents.push_back(1);
 			numCases++;
-			pid.push_back(numCases - 1);
+			modelData->pid.push_back(numCases - 1);
 
 			vector<string> thisCovariate;
 			split(thisCovariate, strVector[0], ":");
 
 			// Parse outcome entry
 			real thisY = static_cast<real>(atof(thisCovariate[0].c_str()));
-			y.push_back(thisY);
+			modelData->y.push_back(thisY);
 
 			// Parse censoring index entry if any
 			if(thisCovariate.size() == 2){
 				real thisZ = static_cast<real>(atof(thisCovariate[1].c_str()));
-				z.push_back(thisZ);
+				modelData->z.push_back(thisZ);
 			}
 
 			// Fix offs for CLR
-			offs.push_back(1);
+			modelData->offs.push_back(1);
 
 			//Fill intercept
-			data[0]->push_back(1.0);
+			modelData->data[0]->push_back(1.0);
 
 			// Parse covariates
 			for (int i = 0; i < (int)strVector.size() - 1; ++i){
@@ -104,56 +104,56 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 				split(thisCovariate, strVector[i + 1], ":");
 				if((int)thisCovariate.size() == 2){
 					DrugIdType drug = static_cast<DrugIdType>(atof(thisCovariate[0].c_str()));
-					if(drugMap.count(drug) == 0){
+					if(modelData->drugMap.count(drug) == 0){
 						maxCol++;
-						drugMap.insert(make_pair(drug,maxCol));
-						indexToDrugIdMap.insert(make_pair(maxCol,drug));
+						modelData->drugMap.insert(make_pair(drug,maxCol));
+						modelData->indexToDrugIdMap.insert(make_pair(maxCol,drug));
 
 						int_vector* colInds = new int_vector();
 						real_vector* thisColumn = new real_vector();
-						push_back(colInds, thisColumn, INDICATOR);
+						modelData->push_back(colInds, thisColumn, INDICATOR);
 						int_vector* nullVector = new int_vector();
 						entriesAbsent.push_back(nullVector);
 						columnType.push_back("lr");
 						nMissingPerColumn.push_back(0);
 					}
-					int col = drugMap[drug];
-					if(formatType[col] == DENSE){
-						for(int j = (int)data[col]->size(); j < currentRow; j++){
-							data[col]->push_back(0.0);
+					int col = modelData->drugMap[drug];
+					if(modelData->formatType[col] == DENSE){
+						for(int j = (int)modelData->data[col]->size(); j < currentRow; j++){
+							modelData->data[col]->push_back(0.0);
 						}
 					}
 					if(thisCovariate[1] == MISSING_STRING_1 || thisCovariate[1] == MISSING_STRING_2){
-						if(formatType[col] == DENSE){
-							data[col]->push_back(0.0);
+						if(modelData->formatType[col] == DENSE){
+							modelData->data[col]->push_back(0.0);
 						}
 						entriesAbsent[col]->push_back(currentRow);
 						nMissingPerColumn[col]++;
 					}
 					else{
 						real value = static_cast<real>(atof(thisCovariate[1].c_str()));
-						if(formatType[col] == DENSE){
-							data[col]->push_back(value);
+						if(modelData->formatType[col] == DENSE){
+							modelData->data[col]->push_back(value);
 						}
-						else if(formatType[col] == INDICATOR){
+						else if(modelData->formatType[col] == INDICATOR){
 							if(value != 1.0 && value != 0.0){
 								columnType[col] = "ls";
-								if(columns[col]->size() > 0){
-									convertColumnToDense(col);
+								if(modelData->columns[col]->size() > 0){
+									modelData->convertColumnToDense(col);
 								}
 								else{
-									delete columns[col];
-									columns[col] = NULL;
+									delete modelData->columns[col];
+									modelData->columns[col] = NULL;
 								}
-								for(int j = (int)data[col]->size(); j < currentRow; j++){
-									data[col]->push_back(0.0);
+								for(int j = (int)modelData->data[col]->size(); j < currentRow; j++){
+									modelData->data[col]->push_back(0.0);
 								}
-								data[col]->push_back(value);
-								formatType[col] = DENSE;
+								modelData->data[col]->push_back(value);
+								modelData->formatType[col] = DENSE;
 							}
 							else{
 								if(value == 1.0){
-									columns[col]->push_back(currentRow);
+									modelData->columns[col]->push_back(currentRow);
 								}
 							}
 						}
@@ -161,48 +161,33 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 				}
 			}
 			currentRow++;
-			nRows++;
+			modelData->nRows++;
 		}
 	}
 
-	nPatients = numCases;
-	nCols = columns.size();
-	conditionId = "0";
+	modelData->nPatients = numCases;
+	modelData->nCols = modelData->columns.size();
+	modelData->conditionId = "0";
 
-	nCols_ = nCols;
-	y_ = y;
+	nCols_ = modelData->nCols;
+	y_ = modelData->y;
 
-	nevents.push_back(1); // Save last patient
+	modelData->nevents.push_back(1); // Save last patient
 	
-	for(int j = 0; j < nCols; j++){
-		if(formatType[j] == DENSE){
-			for(int i = (int)data[j]->size(); i < nRows; i++){
-				data[j]->push_back(0.0);
+	for(int j = 0; j < modelData->nCols; j++){
+		if(modelData->formatType[j] == DENSE){
+			for(int i = (int)modelData->data[j]->size(); i < modelData->nRows; i++){
+				modelData->data[j]->push_back(0.0);
 			}
 		}
 	}
-	/*
-	for(int j = 0; j < nCols; j++){
-		if(formatType[j] == INDICATOR){
-			if(columns[j])
-				columns[j]->clear();
-			columns[j] = new int_vector();
-			for(int i = 0; i < nRows; i++)
-			{
-				if((int)data[j]->at(i) == 1)
-					columns[j]->push_back(i);
-			}
-			data[j]->clear();
-		}
-	}
-	*/
-	int index = columns.size();
+	int index = modelData->columns.size();
 
 #ifndef MY_RCPP_FLAG
 	cout << "ImputeInputReader" << endl;
 	cout << "Read " << currentRow << " data lines from " << fileName << endl;
 	cout << "Number of stratum: " << numCases << endl;
-	cout << "Number of covariates: " << nCols << endl;
+	cout << "Number of covariates: " << modelData->nCols << endl;
 #endif
 
 #if 0
@@ -220,7 +205,7 @@ void BBRImputeInputReader::readFile(const char* fileName) {
 	printVector(nevents.data(), nevents.size());
 #endif
 }
-
+/*
 void BBRImputeInputReader::writeFile(const char* fileName) {
 	ofstream out;
 	out.open(fileName,ios::out);
@@ -242,3 +227,4 @@ void BBRImputeInputReader::writeFile(const char* fileName) {
 		out << endl;
 	}
 }
+*/

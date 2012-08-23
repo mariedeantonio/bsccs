@@ -62,6 +62,8 @@ public:
 	friend class RTestInputReader;
 	friend class CoxInputReader;
 	friend class CCTestInputReader;
+	friend class BBRImputeInputReader;
+	friend class CSVImputeInputReader;
 
 private:
 

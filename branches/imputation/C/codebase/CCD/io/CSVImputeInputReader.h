@@ -10,13 +10,13 @@
 
 #include "ImputeInputReader.h"
 
-class CSVImputeInputReader : public ImputeInputReader {
+class CSVImputeInputReader : public InputReader, public ImputeInputReader{
 public:
 	CSVImputeInputReader();
 	virtual ~CSVImputeInputReader();
 
-	void readFile(const char* fileName);
-	void writeFile(const char* fileName);
+	virtual void readFile(const char* fileName);
+//	void writeFile(const char* fileName);
 };
 
 #endif /* CSVIMPUTEINPUTREADER_H_ */

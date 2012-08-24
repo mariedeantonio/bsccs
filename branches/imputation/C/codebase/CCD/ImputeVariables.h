@@ -8,7 +8,7 @@
 #ifndef IMPUTEVARIABLES_H_
 #define IMPUTEVARIABLES_H_
 
-#include "ImputeInputReader.h"
+#include "ImputationPolicy.h"
 #include "ccd.h"
 
 class ImputeVariables {
@@ -24,6 +24,8 @@ private:
 	CyclicCoordinateDescent*  ccd;
 	AbstractModelSpecifics* model;
 	InputReader* reader;
+	ModelData* modelData;
+	ImputationHelper* imputeHelper;
 	int nImputations;
 };
 

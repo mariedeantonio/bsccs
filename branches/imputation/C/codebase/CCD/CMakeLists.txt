@@ -79,8 +79,6 @@ set(SOURCE_FILES
 	io/RTestInputReader.cpp
 	io/CoxInputReader.cpp
 	io/CCTestInputReader.cpp
-	io/CSVImputeInputReader.cpp
-	io/BBRImputeInputReader.cpp
 	AbstractModelSpecifics.cpp
 	AbstractDriver.cpp
 	AbstractSelector.cpp
@@ -89,7 +87,7 @@ set(SOURCE_FILES
 	CrossValidationDriver.cpp
 	BootstrapSelector.cpp
 	BootstrapDriver.cpp
-	ImputeInputReader.cpp
+	ImputationPolicy.cpp
 	ImputeVariables.cpp)
 	
 if(CUDA_FOUND)

@@ -114,14 +114,21 @@ public:
 	virtual ~CompressedDataMatrix();
 	
 	int getNumberOfRows(void) const;
-	
+
 	int getNumberOfColumns(void) const;
+
+	void setNumberOfColumns(int nColumns);
 
 	int getNumberOfEntries(int column) const;
 
 	int* getCompressedColumnVector(int column) const;
 
+	void removeFromColumnVector(int column, int_vector removeEntries) const;
+	void addToColumnVector(int column, int_vector addEntries) const;
+
 	real* getDataVector(int column) const;
+
+	void getDataRow(int row, real* x) const;
 
 	FormatType getFormatType(int column) const;
 

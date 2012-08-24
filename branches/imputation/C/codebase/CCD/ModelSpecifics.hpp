@@ -156,6 +156,24 @@ double ModelSpecifics<BaseModel,WeightType>::getPredictiveLogLikelihood(real* we
 	return static_cast<double>(logLikelihood);
 }
 
+template <class BaseModel,typename WeightType>
+void ModelSpecifics<BaseModel,WeightType>::getPredictiveEstimates(real* y, real* weights){
+
+	std::vector<real> xBeta(K,0.0);
+	for(int j = 0; j < J; j++){
+		GenericIterator it(*hXI, j);
+		for(; it; ++it){
+			const int k = it.index();
+			xBeta[k] += it.value() * hBeta[j] * weights[k];
+		}
+	}
+	for(int k = 0; k < K; k++){
+		if(weights[k]){
+			BaseModel::predictEstimate(y[k], xBeta[k]);
+		}
+	}
+}
+
 // TODO The following function is an example of a double-dispatch, rewrite without need for virtual function
 template <class BaseModel,typename WeightType>
 void ModelSpecifics<BaseModel,WeightType>::computeGradientAndHessian(int index, double *ogradient,
@@ -227,7 +245,7 @@ void ModelSpecifics<BaseModel,WeightType>::computeGradientAndHessianImpl(int ind
 			BaseModel::incrementGradientAndHessian(it,
 					w, // Signature-only, for iterator-type specialization
 					&gradient, &hessian, numerPid[k], numerPid2[k],
-					denomPid[k], hNWeight[k], it.value(), hXBeta[k], hY[k]); // When function is in-lined, compiler will only use necessary arguments
+					denomPid[k], hNWeight[k], 1.0, hXBeta[k], hY[k]); // When function is in-lined, compiler will only use necessary arguments
 		}
 	}
 

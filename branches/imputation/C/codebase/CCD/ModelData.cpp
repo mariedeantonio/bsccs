@@ -45,6 +45,10 @@ real* ModelData::getYVector() { // TODO deprecated
 	return makeDeepCopy(&y[0], y.size());
 }
 
+void ModelData::setYVector(vector<real> y_){
+	y = y_;
+}
+
 int* ModelData::getNEventVector() { // TODO deprecated
 	return makeDeepCopy(&nevents[0], nevents.size());
 }
@@ -55,4 +59,14 @@ int* ModelData::getOffsetVector() { // TODO deprecated
 
 map<int, DrugIdType> ModelData::getDrugNameMap() {
 	return indexToDrugIdMap;
+}
+
+void ModelData::sortDataColumns(vector<int> sortedInds){
+	reindexVector(formatType,sortedInds);
+	vector<real_vector*> tempData = data;
+	vector<int_vector*> colData = columns;
+	for(int i = 0; i < nCols; i++){
+		data[i] = tempData[sortedInds[i]];
+		columns[i] = colData[sortedInds[i]];
+	}
 }

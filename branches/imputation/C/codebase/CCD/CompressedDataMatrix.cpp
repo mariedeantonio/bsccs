@@ -227,6 +227,10 @@ int CompressedDataMatrix::getNumberOfColumns(void) const {
 	return nCols;
 }
 
+void CompressedDataMatrix::setNumberOfColumns(int nColumns) {
+	nCols = nColumns;
+}
+
 int CompressedDataMatrix::getNumberOfEntries(int column) const {
 #ifdef DATA_AOS
 	return allColcolumns[column]->getNumberOfEntries();
@@ -243,12 +247,65 @@ int* CompressedDataMatrix::getCompressedColumnVector(int column) const {
 #endif
 }
 
+void CompressedDataMatrix::removeFromColumnVector(int column, int_vector removeEntries) const{
+	int lastit = 0;
+	int_vector::iterator it1 = removeEntries.begin();
+	int_vector::iterator it2 = columns[column]->begin();
+	while(it1 < removeEntries.end() && it2 < columns[column]->end()){
+		if(*it1 < *it2)
+			it1++;
+		else if(*it2 < *it1){
+			it2++;
+		}
+		else{
+			columns[column]->erase(it2);
+			it2 = columns[column]->begin() + lastit;
+		}
+	}
+}
+
+void CompressedDataMatrix::addToColumnVector(int column, int_vector addEntries) const{
+	int lastit = 0;
+	int p = columns[column]->size() + addEntries.size();
+	for(int i = 0; i < (int)addEntries.size(); i++)
+	{
+		int_vector::iterator it = columns[column]->begin() + lastit;
+		if(columns[column]->size() > 0){
+			while(*it < addEntries[i]){
+				it++;
+				lastit++;
+			}
+		}
+		columns[column]->insert(it,addEntries[i]);
+	}
+}
+
 real* CompressedDataMatrix::getDataVector(int column) const {
 #ifdef DATA_AOS
 	return allColumns[column]->getData();
 #else
 	return const_cast<real*>(data[column]->data());
 #endif
+}
+
+void CompressedDataMatrix::getDataRow(int row, real* x) const {
+	for(int j = 0; j < nCols; j++)
+	{
+		if(formatType[j] == DENSE)
+			x[j] = data[j]->at(row);
+		else{
+			x[j] = 0.0;
+			for(int i = 0; i < (int)columns[j]->size(); i++){
+				if(columns[j]->at(i) == row){
+					x[j] = 1.0;
+					break;
+				}
+				else if(columns[j]->at(i) > row)
+					break;
+			}
+		}
+
+	}
 }
 
 //void CompressedDataMatrix::allocateMemory(int nCols) {

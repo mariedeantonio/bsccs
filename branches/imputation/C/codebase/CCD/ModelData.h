@@ -30,6 +30,14 @@ using std::stringstream;
 	typedef int DrugIdType;
 #endif
 
+template <class T> void reindexVector(vector<T>& vec, vector<int> ind) {
+	int n = (int) vec.size();
+	vector<T> temp = vec;
+	for(int i = 0; i < n; i++){
+		vec[i] = temp[ind[i]];
+	}
+}
+
 class ModelData : public CompressedDataMatrix {
 public:
 	ModelData();
@@ -37,6 +45,7 @@ public:
 
 	int* getPidVector();
 	real* getYVector();
+	void setYVector(vector<real> y_);
 	int* getNEventVector();
 	int* getOffsetVector();
 	map<int, DrugIdType> getDrugNameMap();
@@ -56,14 +65,16 @@ public:
 		return pid;
 	}
 	
+	void sortDataColumns(vector<int> sortedInds);
+
 	// TODO Improve encapsulation
 	friend class SCCSInputReader;
 	friend class CLRInputReader;
 	friend class RTestInputReader;
 	friend class CoxInputReader;
 	friend class CCTestInputReader;
-	friend class BBRImputeInputReader;
-	friend class CSVImputeInputReader;
+	template <class ImputationPolicy> friend class BBRInputReader;
+	template <class ImputationPolicy> friend class CSVInputReader;
 
 private:
 

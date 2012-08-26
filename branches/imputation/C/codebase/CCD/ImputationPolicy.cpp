@@ -78,7 +78,7 @@ int set_difference(int* columns, int length, InputIterator first2, InputIterator
 }
 void ImputationHelper::sortColumns(){
 
-	int nCols = nCols_;
+	int nCols = nCols_Orig;
 	for(int i = 0; i < nCols; i++)
 		colIndices.push_back(i);
 	sort(colIndices.begin(),colIndices.end(),Compare(nMissingPerColumn));
@@ -119,24 +119,29 @@ void ImputationHelper::setWeightsForImputation(int col, vector<real>& weights, i
 		weights[(missingEntries[col])->at(i)] = 0.0;
 }
 
-int ImputationHelper::getNumberOfColumns(){
-	return nCols_;
+int ImputationHelper::getOrigNumberOfColumns(){
+	return nCols_Orig;
 }
 
-vector<real> ImputationHelper::getYVector(){
-	return y_;
+vector<real> ImputationHelper::getOrigYVector(){
+	return y_Orig;
 }
 
-void ImputationHelper::setParams(vector<real> y, int nCols){
-	y_ = y;
-	nCols_ = nCols;
+void ImputationHelper::saveOrigYVector(real* y, int nRows){
+	y_Orig.resize(nRows,0.0);
+	for(int i = 0; i < nRows; i++)
+		y_Orig[i] = y[i];
+}
+
+void ImputationHelper::saveOrigNumberOfColumns(int nCols){
+	nCols_Orig = nCols;
 }
 
 void ImputationHelper::getMissingEntries(int col, vector<int>& missing){
 	missing = *missingEntries[col];
 }
 
-void ImputationHelper::getSampleMeanVariance(int col, real* Xmean, real* Xvar, real* dataVec, int* columnVec, FormatType formatType, int nRows, int nEntries){
+void ImputationHelper::getSampleMeanVariance(int col, real& Xmean, real& Xvar, real* dataVec, int* columnVec, FormatType formatType, int nRows, int nEntries){
 		real sumx2 = 0.0;
 		real sumx = 0.0;
 		int n = nRows - (int)missingEntries[col]->size();
@@ -157,6 +162,6 @@ void ImputationHelper::getSampleMeanVariance(int col, real* Xmean, real* Xvar, r
 			sumx = set_difference(columnVec,nEntries, missingEntries[col]->begin(), missingEntries[col]->end());
 			sumx2 = sumx;
 		}
-		*Xmean = sumx/n;
-		*Xvar =  (sumx2 - (*Xmean)*(*Xmean)*n)/(n-1);
+		Xmean = sumx/n;
+		Xvar =  (sumx2 - Xmean*Xmean*n)/(n-1);
 }

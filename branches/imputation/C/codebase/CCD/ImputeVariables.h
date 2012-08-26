@@ -15,18 +15,26 @@ class ImputeVariables {
 public:
 	ImputeVariables();
 	~ImputeVariables();
-	void initialize(CCDArguments arguments);
-	void getComplement(vector<real>& weights);
-	void impute(CCDArguments arguments);
-	void randomizeImputationsLR(real* yPred, real* weights, int col);
-	void randomizeImputationsLS(real* yPred, real* weights, int col);
+	void initialize(CCDArguments args);
+	void impute();
+	void imputeColumn(int col);
+	void getColumnToImpute(int col, real* y);
+	void initializeCCDModel(int col, vector<real> weights);
+	void randomizeImputationsLR(vector<real> yPred, vector<real> weights, int col);
+	void randomizeImputationsLS(vector<real> yPred, vector<real> weights, int col);
+	void writeImputedData(int imputationNumber);
+	void resetModelData();
+	void resetMeanVar();
 private:
+	CCDArguments arguments;
 	CyclicCoordinateDescent*  ccd;
 	AbstractModelSpecifics* model;
 	InputReader* reader;
 	ModelData* modelData;
 	ImputationHelper* imputeHelper;
 	int nImputations;
+	vector<real> xMean;
+	vector<real> xVar;
 };
 
 

@@ -30,19 +30,20 @@ public:
 	vector<int> getnMissingPerColumn();
 	vector<int> getSortedColIndices();
 	void setWeightsForImputation(int col, vector<real>& weights, int nRows);
-	void setParams(vector<real> y, int nCols);
-	int getNumberOfColumns();
-	vector<real> getYVector();
+	void saveOrigYVector(real* y, int nRows);
+	void saveOrigNumberOfColumns(int nCols);
+	int getOrigNumberOfColumns();
+	vector<real> getOrigYVector();
 	void getMissingEntries(int col, vector<int>& missing);
-	void getSampleMeanVariance(int col, real* Xmean, real* Xvar, real* dataVec, int* columnVec, FormatType formatType, int nRows, int nEntries);
+	void getSampleMeanVariance(int col, real& Xmean, real& Xvar, real* dataVec, int* columnVec, FormatType formatType, int nRows, int nEntries);
 protected:
 	vector<int> nMissingPerColumn;
 	vector<int> colIndices;
 	vector<int> reverseColIndices;
-	vector<real> y_;
+	vector<real> y_Orig;
 	vector<int_vector*> missingEntries;
 
-	int nCols_;
+	int nCols_Orig;
 };
 
 

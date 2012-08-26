@@ -596,7 +596,7 @@ int main(int argc, char* argv[]) {
 	else{ //Perform Imputation
 		ImputeVariables imputation;
 		imputation.initialize(arguments);
-		imputation.impute(arguments);
+		imputation.impute();
 	}
     return 0;
 }

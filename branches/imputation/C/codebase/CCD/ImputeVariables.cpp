@@ -47,6 +47,11 @@ double randn_notrig(double mu=0.0, double sigma=1.0) {
 	}
 }
 
+void getComplement(vector<real>& weights){
+	for(std::vector<real>::iterator it = weights.begin(); it != weights.end(); it++) {
+		*it = 1 - *it;
+	}
+}
 
 ImputeVariables::ImputeVariables(){
 	ccd = NULL;
@@ -54,11 +59,12 @@ ImputeVariables::ImputeVariables(){
 }
 
 ImputeVariables::~ImputeVariables(){
-	if (reader)
-		delete reader;
+	if (modelData)
+		delete modelData;
 }
 
-void ImputeVariables::initialize(CCDArguments arguments){
+void ImputeVariables::initialize(CCDArguments args){
+	arguments = args;
 	nImputations = arguments.numberOfImputations;
 	if(arguments.fileFormat == "csv"){
 		reader = new CSVInputReader<ImputationHelper>();
@@ -76,20 +82,15 @@ void ImputeVariables::initialize(CCDArguments arguments){
 		cerr << "Invalid file format." << endl;
 		exit(-1);
 	}
+	imputeHelper->saveOrigYVector(modelData->getYVector(), modelData->getNumberOfRows());
+	imputeHelper->saveOrigNumberOfColumns(modelData->getNumberOfColumns());
 	imputeHelper->sortColumns();
 	vector<int> sortedColIndices = imputeHelper->getSortedColIndices();
 	modelData->sortDataColumns(sortedColIndices);
-}
-
-void ImputeVariables::getComplement(vector<real>& weights){
-	for(std::vector<real>::iterator it = weights.begin(); it != weights.end(); it++) {
-		*it = 1 - *it;
-	}
-}
-
-void ImputeVariables::impute(CCDArguments arguments){
-	
 	srand(time(NULL));
+}
+
+void ImputeVariables::impute(){
 	
 	vector<int> nMissingPerColumn = imputeHelper->getnMissingPerColumn();
 	int nColsToImpute = 0;
@@ -100,108 +101,111 @@ void ImputeVariables::impute(CCDArguments arguments){
 	}
 	
 	cout << "Total columns to impute = " << nColsToImpute << endl;
-	int nRows = modelData->getNumberOfRows();
+
 	for(int i = 0; i < nImputations; i++){
 		for(int j = 0; j < (int)nMissingPerColumn.size(); j++){
 			if(nMissingPerColumn[j] > 0){
 				cout << "Imputing column " << j - ((int)nMissingPerColumn.size() - nColsToImpute) << endl;
-				vector<real> weights;
-				
-				imputeHelper->setWeightsForImputation(j,weights,nRows);
-				
-				vector<real> y(nRows,0.0);
-				if(modelData->getFormatType(j) == DENSE){
-					real* dataVec = modelData->getDataVector(j);
-					for(int i = 0; i < nRows; i++)
-						y[i] = dataVec[i];
-				}
-				else{
-					int* columnVec = modelData->getCompressedColumnVector(j);
-					int nEntries = modelData->getNumberOfEntries(j);
-					for(int i = 0; i < nEntries; i++)
-						y[columnVec[i]] = 1.0;
-				}
-
-				modelData->setYVector(y);
-
-				modelData->setNumberOfColumns(j);
-
-				if(modelData->getFormatType(j) == DENSE)	//Least Squares
-					model = new ModelSpecifics<LeastSquares<real>,real>(*modelData);
-				else										//Logistic Regression
-					model = new ModelSpecifics<LogisticRegression<real>,real>(*modelData);
-
-				ccd = new CyclicCoordinateDescent(modelData, *model);
-				ccd->setWeights(&weights[0]);
-
-				if(arguments.useNormalPrior)
-					ccd->setPriorType(NORMAL);
-				if (arguments.hyperPriorSet)
-					ccd->setHyperprior(arguments.hyperprior);
-
-				ccd->update(arguments.maxIterations, arguments.convergenceType, arguments.tolerance);
-				getComplement(weights);
-				
-				vector<real> yPred(nRows);
-				vector<real> allOnes(nRows,1.0);
-
-				ccd->getPredictiveEstimates(&yPred[0], &allOnes[0]);
-				
-				if(modelData->getFormatType(j) == DENSE)
-					randomizeImputationsLS(&yPred[0], &weights[0], j);
-				else
-					randomizeImputationsLR(&yPred[0], &weights[0], j);
-//---------------------
-				//char fname[100];
-				//sprintf(fname,"Release/DATA_%d.txt",i);
-				//FILE* fp = fopen(fname,"a");
-				//vector<int> zz(modelData->getNumberOfRows(),0);
-				//if(modelData->getFormatType(j) == DENSE){
-				//	real* y = modelData->getDataVector(j);
-				//	for(int ii = 0; ii < modelData->getNumberOfRows(); ii++){
-				//		fprintf(fp,"%f ",y[ii]);
-				//	}
-
-				//}
-				//else{
-				//	int* z = modelData->getCompressedColumnVector(j);
-				//	for(int ii = 0; ii < modelData->getNumberOfEntries(j); ii++){
-				//		zz[z[ii]] = 1;
-				//	}
-				//	for(int ii = 0; ii < nRows; ii++)
-				//		fprintf(fp,"%d ",zz[ii]);
-				//}
-				//fprintf(fp,"\n");
-				//fclose(fp);
-//----------------------
-
-				if (ccd)
-					delete ccd;
-				if (model)
-					delete model;
+				imputeColumn(j);
 			}
 		}
-		modelData->setYVector(imputeHelper->getYVector());
-		modelData->setNumberOfColumns(imputeHelper->getNumberOfColumns());
-		string outFileName = arguments.inFileName;
-		int dotind = outFileName.find_last_of('.');
-		string extension = outFileName.substr(dotind,outFileName.size()-1);
-		std::ostringstream addendum;
-		addendum << "_imputed_" << i;
-		outFileName.insert(dotind,addendum.str());
-//		reader->writeFile(outFileName.c_str());
-		int nCols = modelData->getNumberOfColumns();
-		for(int j = 0; j < nCols; j++){
-			if(modelData->getFormatType(j) == INDICATOR){
-				vector<int> missing;
-				imputeHelper->getMissingEntries(j,missing);
-				modelData->removeFromColumnVector(j,missing);
-			}
-		}
+		modelData->setYVector(imputeHelper->getOrigYVector());
+		modelData->setNumberOfColumns(imputeHelper->getOrigNumberOfColumns());
+
+		writeImputedData(i);
+
+		resetModelData();
+		resetMeanVar();
 	}
 }
 
-void ImputeVariables::randomizeImputationsLR(real* yPred, real* weights, int col){
+void ImputeVariables::imputeColumn(int col){
+	
+	int nRows = modelData->getNumberOfRows();
+
+	vector<real> y(nRows,0.0);
+	getColumnToImpute(col, &y[0]);
+
+	modelData->setYVector(y);
+	modelData->setNumberOfColumns(col);
+
+	vector<real> weights;
+
+	imputeHelper->setWeightsForImputation(col,weights,nRows);
+
+	initializeCCDModel(col,weights);
+
+	ccd->update(arguments.maxIterations, arguments.convergenceType, arguments.tolerance);
+	getComplement(weights);
+
+	vector<real> yPred(nRows);
+
+	ccd->getPredictiveEstimates(&yPred[0], &weights[0]);
+
+	if(modelData->getFormatType(col) == DENSE)
+		randomizeImputationsLS(yPred, weights, col);
+	else
+		randomizeImputationsLR(yPred, weights, col);
+	//---------------------
+	//char fname[100];
+	//sprintf(fname,"Release/DATA_%d.txt",i);
+	//FILE* fp = fopen(fname,"a");
+	//vector<int> zz(modelData->getNumberOfRows(),0);
+	//if(modelData->getFormatType(j) == DENSE){
+	//	real* y = modelData->getDataVector(j);
+	//	for(int ii = 0; ii < modelData->getNumberOfRows(); ii++){
+	//		fprintf(fp,"%f ",y[ii]);
+	//	}
+
+	//}
+	//else{
+	//	int* z = modelData->getCompressedColumnVector(j);
+	//	for(int ii = 0; ii < modelData->getNumberOfEntries(j); ii++){
+	//		zz[z[ii]] = 1;
+	//	}
+	//	for(int ii = 0; ii < nRows; ii++)
+	//		fprintf(fp,"%d ",zz[ii]);
+	//}
+	//fprintf(fp,"\n");
+	//fclose(fp);
+	//----------------------
+
+	if (ccd)
+		delete ccd;
+	if (model)
+		delete model;
+}
+
+void ImputeVariables::getColumnToImpute(int col, real* y){
+	int nRows = modelData->getNumberOfRows();
+	if(modelData->getFormatType(col) == DENSE){
+		real* dataVec = modelData->getDataVector(col);
+		for(int i = 0; i < nRows; i++)
+			y[i] = dataVec[i];
+	}
+	else{
+		int* columnVec = modelData->getCompressedColumnVector(col);
+		for(int i = 0; i < modelData->getNumberOfEntries(col); i++)
+			y[columnVec[i]] = 1.0;
+	}
+}
+
+void ImputeVariables::initializeCCDModel(int col, vector<real> weights){
+	if(modelData->getFormatType(col) == DENSE)	//Least Squares
+		model = new ModelSpecifics<LeastSquares<real>,real>(*modelData);
+	else										//Logistic Regression
+		model = new ModelSpecifics<LogisticRegression<real>,real>(*modelData);
+
+	ccd = new CyclicCoordinateDescent(modelData, *model);
+	ccd->setWeights(&weights[0]);
+
+	if(arguments.useNormalPrior)
+		ccd->setPriorType(NORMAL);
+	if (arguments.hyperPriorSet)
+		ccd->setHyperprior(arguments.hyperprior);
+}
+
+void ImputeVariables::randomizeImputationsLR(vector<real> yPred, vector<real> weights, int col){
 	if(modelData->getFormatType(col) == INDICATOR){
 		int nRows = modelData->getNumberOfRows();
 		vector<int> y;
@@ -228,16 +232,15 @@ void ImputeVariables::randomizeImputationsLR(real* yPred, real* weights, int col
 	}
 }
 
-void ImputeVariables::randomizeImputationsLS(real* yPred, real* weights, int col){
+void ImputeVariables::randomizeImputationsLS(vector<real> yPred, vector<real> weights, int col){
 	
 	int n = 0;
-	vector<real> xMean(col);
-	vector<real> xVar(col);
 	
 	int nRows = modelData->getNumberOfRows();
 	vector<real> dist(nRows,0.0);
 
-	for(int j = 0; j < col; j++){
+	int nColsDone = (int)xMean.size();
+	for(int j = nColsDone; j < col; j++){
 		real* dataVec;
 		int* columnVec;
 		int nEntries = 0;
@@ -249,7 +252,10 @@ void ImputeVariables::randomizeImputationsLS(real* yPred, real* weights, int col
 			columnVec = modelData->getCompressedColumnVector(j);
 			nEntries = modelData->getNumberOfEntries(j);
 		}
-		imputeHelper->getSampleMeanVariance(col,&xMean[j],&xVar[j],dataVec,columnVec,formatType,nRows,nEntries);
+		real mean,var;
+		imputeHelper->getSampleMeanVariance(col,mean,var,dataVec,columnVec,formatType,nRows,nEntries);
+		xMean.push_back(mean);
+		xVar.push_back(var);
 	}
 
 	real* y = modelData->getDataVector(col);
@@ -276,6 +282,38 @@ void ImputeVariables::randomizeImputationsLS(real* yPred, real* weights, int col
 			double predInterval = 1.96 * sigma * sqrt(1 + 1/n + dist[i]/(n-1));
 			y[i] = randn_notrig(yPred[i],predInterval);
 //			y[i] = yPred[i];
+		}
+	}
+}
+
+void ImputeVariables::writeImputedData(int imputationNumber){
+	string outFileName = arguments.inFileName;
+	int dotind = outFileName.find_last_of('.');
+	std::ostringstream addendum;
+	addendum << "_imputed_" << imputationNumber;
+	outFileName.insert(dotind,addendum.str());
+	//		reader->writeFile(outFileName.c_str());
+
+}
+
+void ImputeVariables::resetModelData(){
+	int nCols = modelData->getNumberOfColumns();
+	for(int j = 0; j < nCols; j++){
+		if(modelData->getFormatType(j) == INDICATOR){
+			vector<int> missing;
+			imputeHelper->getMissingEntries(j,missing);
+			modelData->removeFromColumnVector(j,missing);
+		}
+	}
+}
+
+void ImputeVariables::resetMeanVar(){
+	vector<int> nMissingPerColumn = imputeHelper->getnMissingPerColumn();
+	int ind = 0;
+	for(int i = (int)nMissingPerColumn.size()-2; i >= 0; i--){
+		if(nMissingPerColumn[i] > 0){
+			xMean.erase(xMean.begin()+i);
+			xVar.erase(xVar.begin()+i);
 		}
 	}
 }

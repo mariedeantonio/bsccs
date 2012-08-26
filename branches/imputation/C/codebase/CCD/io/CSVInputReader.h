@@ -114,8 +114,6 @@ public:
 		modelData->nRows = currentRow;
 		modelData->conditionId = "0";
 
-		imputePolicy->setParams(modelData->y, modelData->nCols);
-
 		modelData->nevents.push_back(1); // Save last patient
 
 		for(int j = 0; j < modelData->nCols; j++){

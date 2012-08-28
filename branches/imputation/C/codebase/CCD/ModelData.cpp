@@ -61,6 +61,10 @@ map<int, DrugIdType> ModelData::getDrugNameMap() {
 	return indexToDrugIdMap;
 }
 
+map<DrugIdType, int> ModelData::getDrugMap() {
+	return drugMap;
+}
+
 void ModelData::sortDataColumns(vector<int> sortedInds){
 	reindexVector(formatType,sortedInds);
 	vector<real_vector*> tempData = data;

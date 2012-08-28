@@ -49,6 +49,7 @@ public:
 	int* getNEventVector();
 	int* getOffsetVector();
 	map<int, DrugIdType> getDrugNameMap();
+	map<DrugIdType, int> getDrugMap();
 	int getNumberOfPatients();
 	string getConditionId();
 	std::vector<int>* getPidVectorSTL();

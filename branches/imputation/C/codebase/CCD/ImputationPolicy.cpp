@@ -105,11 +105,16 @@ void ImputationHelper::push_back(int col, int indAbsent){
 	nMissingPerColumn[col]++;
 }
 
-vector<int> ImputationHelper::getnMissingPerColumn(){
+const vector<int>& ImputationHelper::getnMissingPerColumn() const{
 	return nMissingPerColumn;
 }
-vector<int> ImputationHelper::getSortedColIndices(){
+
+const vector<int>& ImputationHelper::getSortedColIndices() const{
 	return colIndices;
+}
+
+const vector<int>& ImputationHelper::getReverseColIndices() const{
+	return reverseColIndices;
 }
 
 void ImputationHelper::setWeightsForImputation(int col, vector<real>& weights, int nRows){

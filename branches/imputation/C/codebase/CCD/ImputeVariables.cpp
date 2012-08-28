@@ -8,6 +8,7 @@
 #include "ImputeVariables.h"
 #include "io/CSVInputReader.h"
 #include "io/BBRInputReader.h"
+#include "io/BBROutputWriter.h"
 #include <time.h>
 
 double randn_notrig(double mu=0.0, double sigma=1.0) {
@@ -292,8 +293,13 @@ void ImputeVariables::writeImputedData(int imputationNumber){
 	std::ostringstream addendum;
 	addendum << "_imputed_" << imputationNumber;
 	outFileName.insert(dotind,addendum.str());
-	//		reader->writeFile(outFileName.c_str());
 
+	vector<int> reverseColIndices = imputeHelper->getReverseColIndices();
+
+	if(arguments.fileFormat == "bbr"){
+		BBROutputWriter* bbrout = new BBROutputWriter();
+		bbrout->writeFile(outFileName.c_str(),modelData,reverseColIndices);
+	}
 }
 
 void ImputeVariables::resetModelData(){

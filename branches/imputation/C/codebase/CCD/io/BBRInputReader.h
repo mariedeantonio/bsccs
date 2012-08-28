@@ -48,8 +48,8 @@ public:
 		string outerDelimiter(DELIMITER);
 
 		// Allocate a column for intercept
-		real_vector* thisColumn = new real_vector();
-		modelData->push_back(NULL, thisColumn, DENSE);
+		real_vector* thisData = new real_vector();
+		modelData->push_back(NULL, thisData, DENSE);
 		int_vector* nullVector = new int_vector();
 		imputePolicy->push_back(nullVector,0);
 		modelData->drugMap.insert(make_pair(0,0));
@@ -98,9 +98,9 @@ public:
 							modelData->drugMap.insert(make_pair(drug,maxCol));
 							modelData->indexToDrugIdMap.insert(make_pair(maxCol,drug));
 
-							int_vector* colInds = new int_vector();
-							real_vector* thisColumn = new real_vector();
-							modelData->push_back(colInds, thisColumn, INDICATOR);
+							int_vector* thisColumn = new int_vector();
+							real_vector* thisData = new real_vector();
+							modelData->push_back(thisColumn, thisData, INDICATOR);
 							int_vector* nullVector = new int_vector();
 							imputePolicy->push_back(nullVector,0);
 						}

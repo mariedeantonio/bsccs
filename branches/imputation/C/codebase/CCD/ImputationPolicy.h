@@ -27,8 +27,9 @@ public:
 	void sortColumns();
 	void push_back(int_vector* vecAbsent,int valMissing);
 	void push_back(int col, int indAbsent);
-	vector<int> getnMissingPerColumn();
-	vector<int> getSortedColIndices();
+	const vector<int>& getnMissingPerColumn() const;
+	const vector<int>& getSortedColIndices() const;
+	const vector<int>& getReverseColIndices() const;
 	void setWeightsForImputation(int col, vector<real>& weights, int nRows);
 	void saveOrigYVector(real* y, int nRows);
 	void saveOrigNumberOfColumns(int nCols);
@@ -55,14 +56,16 @@ public:
 	void sortColumns() {}
 	void push_back(int_vector* vecAbsent,int valMissing) {}
 	void push_back(int col, int indAbsent) {}
-	vector<int> getnMissingPerColumn() {}
-	vector<int> getSortedColIndices() {}
+	const vector<int>& getnMissingPerColumn() const {}
+	const vector<int>& getSortedColIndices() const {}
+	const vector<int>& getReverseColIndices() const {}
 	void setWeightsForImputation(int col, vector<real>& weights, int nRows) {}
-	void setParams(vector<real> y, int nCols) {}
-	int getNumberOfColumns() {}
-	vector<real> getYVector() {}
+	void saveOrigYVector(real* y, int nRows) {}
+	void saveOrigNumberOfColumns(int nCols) {}
+	int getOrigNumberOfColumns() {}
+	vector<real> getOrigYVector() {}
 	void getMissingEntries(int col, vector<int>& missing) {}
-	void getSampleMeanVariance(int col, real* Xmean, real* Xvar, real* dataVec, int* columnVec, FormatType formatType, int nRows, int nEntries) {}
+	void getSampleMeanVariance(int col, real& Xmean, real& Xvar, real* dataVec, int* columnVec, FormatType formatType, int nRows, int nEntries) {}
 };
 
 #endif /* ImputationHelper_H_ */

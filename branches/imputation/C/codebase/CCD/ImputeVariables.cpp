@@ -85,25 +85,26 @@ void ImputeVariables::initialize(CCDArguments args){
 	}
 	imputeHelper->saveOrigYVector(modelData->getYVector(), modelData->getNumberOfRows());
 	imputeHelper->saveOrigNumberOfColumns(modelData->getNumberOfColumns());
-	imputeHelper->sortColumns();
-	vector<int> sortedColIndices = imputeHelper->getSortedColIndices();
-	modelData->sortDataColumns(sortedColIndices);
 	srand(time(NULL));
 }
 
 void ImputeVariables::impute(){
 	
-	vector<int> nMissingPerColumn = imputeHelper->getnMissingPerColumn();
-	int nColsToImpute = 0;
-	for(int j = 0; j < (int)nMissingPerColumn.size(); j++){
-		if(nMissingPerColumn[j] > 0){
-			nColsToImpute++;
-		}
-	}
-	
-	cout << "Total columns to impute = " << nColsToImpute << endl;
-
 	for(int i = 0; i < nImputations; i++){
+		imputeHelper->sortColumns();
+		vector<int> sortedColIndices = imputeHelper->getSortedColIndices();
+		modelData->sortDataColumns(sortedColIndices);
+
+		vector<int> nMissingPerColumn = imputeHelper->getnMissingPerColumn();
+		int nColsToImpute = 0;
+		for(int j = 0; j < (int)nMissingPerColumn.size(); j++){
+			if(nMissingPerColumn[j] > 0){
+				nColsToImpute++;
+			}
+		}
+
+		cout << "Total columns to impute = " << nColsToImpute << endl;
+
 		for(int j = 0; j < (int)nMissingPerColumn.size(); j++){
 			if(nMissingPerColumn[j] > 0){
 				cout << "Imputing column " << j - ((int)nMissingPerColumn.size() - nColsToImpute) << endl;
@@ -112,6 +113,9 @@ void ImputeVariables::impute(){
 		}
 		modelData->setYVector(imputeHelper->getOrigYVector());
 		modelData->setNumberOfColumns(imputeHelper->getOrigNumberOfColumns());
+		vector<int> reverseColIndices = imputeHelper->getReverseColIndices();
+		modelData->sortDataColumns(reverseColIndices);
+		imputeHelper->resortColumns();
 
 		writeImputedData(i);
 
@@ -294,11 +298,9 @@ void ImputeVariables::writeImputedData(int imputationNumber){
 	addendum << "_imputed_" << imputationNumber;
 	outFileName.insert(dotind,addendum.str());
 
-	vector<int> reverseColIndices = imputeHelper->getReverseColIndices();
-
 	if(arguments.fileFormat == "bbr"){
 		BBROutputWriter* bbrout = new BBROutputWriter();
-		bbrout->writeFile(outFileName.c_str(),modelData,reverseColIndices);
+		bbrout->writeFile(outFileName.c_str(),modelData);
 	}
 }
 

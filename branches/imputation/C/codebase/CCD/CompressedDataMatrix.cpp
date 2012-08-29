@@ -325,3 +325,68 @@ FormatType CompressedDataMatrix::getFormatType(int column) const {
 	return formatType[column];
 #endif
 }
+
+CompressedDataMatrix* CompressedDataMatrix::transpose(){
+	CompressedDataMatrix* matTranspose = new CompressedDataMatrix();
+
+	matTranspose->nRows = this->getNumberOfColumns();
+	matTranspose->nCols = this->getNumberOfRows();
+
+	bool flagDense = false;
+	bool flagIndicator = false;
+	for(int i = 0; i < nCols; i++){
+		if(formatType[i] == DENSE)
+			flagDense = true;
+		if(formatType[i] == INDICATOR)
+			flagIndicator = true;
+	}
+	matTranspose->formatType.resize(matTranspose->nCols);
+	if(flagIndicator){
+		for (int k = 0; k < matTranspose->nCols; k++) {
+			int_vector* thisColumn = new int_vector();
+			matTranspose->columns.push_back(thisColumn);
+			matTranspose->formatType[k] = INDICATOR;
+		}
+	}
+
+	if(flagDense){
+		for (int k = 0; k < matTranspose->nCols; k++) {
+			real_vector* thisData = new real_vector();
+			matTranspose->data.push_back(thisData);
+			matTranspose->formatType[k] = DENSE;
+		}
+	}
+
+	if(flagIndicator && flagDense){
+		for(int k = 0; k < matTranspose->nCols; k++){
+			matTranspose->formatType[k] = SPARSE;
+		}
+	}
+
+
+	for (int i = 0; i < matTranspose->nRows; i++) {
+		if(formatType[i] == INDICATOR || formatType[i] == SPARSE){
+			int rows = this->getNumberOfEntries(i);
+			for (int j = 0; j < rows; j++) {
+				matTranspose->columns[this->getCompressedColumnVector(i)[j]]->push_back(i);
+				if(flagDense){
+					if(formatType[i] == SPARSE)
+						matTranspose->data[this->getCompressedColumnVector(i)[j]]->push_back(this->data[i]->at(j));
+					else
+						matTranspose->data[this->getCompressedColumnVector(i)[j]]->push_back(1.0);
+				}
+			}
+		}
+		else{
+			for (int j = 0; j < nRows; j++) {
+				if(flagIndicator){
+					matTranspose->columns[j]->push_back(i);
+				}
+				matTranspose->data[j]->push_back(this->data[i]->at(j));
+			}
+		}
+	}
+
+
+	return matTranspose;
+}

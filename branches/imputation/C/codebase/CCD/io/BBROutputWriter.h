@@ -18,36 +18,52 @@ public:
 	BBROutputWriter() {} ;
 	virtual ~BBROutputWriter() {}
 
-	void BBROutputWriter::writeFile(const char* fileName, ModelData* modelData, vector<int> reverseColIndices = vector<int>()) {
-		ofstream out;
-		out.open(fileName,ios::out);
+	void BBROutputWriter::writeFile(const char* fileName, ModelData* modelData) {
 
 		int nRows = modelData->getNumberOfRows();
 		int nCols = modelData->getNumberOfColumns();
 
-		if((int)reverseColIndices.size() == 0){
-			for(int i = 0; i < nCols; i++)
-				reverseColIndices.push_back(i);
-		}
+		CompressedDataMatrix* dataTranspose = modelData->transpose();
 
-		map<DrugIdType,int> drugMap = modelData->getDrugMap();
+		ofstream out;
+		out.open(fileName,ios::out);
+
+		map<DrugIdType,int> indexToDrugIdMap = modelData->getDrugNameMap();
 		vector<real> y = modelData->getYVectorRef();
 		vector<real> z = modelData->getZVectorRef();
 		for(int i = 0; i < nRows; i++){
-			vector<real> x(nCols,0.0);
-			modelData->getDataRow(i,&x[0]);
+
 			out << y[i];
 			if((int)z.size() > 0)
 				out << ":" << z[i];
 
-			map<DrugIdType,int>::iterator it = drugMap.begin();
-			for(int j = 0; j < nCols; j++, *it++){
-				int drug = (*it).first;
-				if(drug == 0)
-					continue;
-				int col = reverseColIndices[drugMap[drug]];
-				if(x[col] != 0.0)
-					out << " " << drug << ":" << x[col];
+			int* column;
+			real* data;
+			int nEntries;
+			FormatType formatType = dataTranspose->getFormatType(i);
+			switch (formatType)
+			{
+			case INDICATOR:
+				column = dataTranspose->getCompressedColumnVector(i);
+				nEntries = dataTranspose->getNumberOfEntries(i);
+				for(int j = 1; j < nEntries; j++){
+					out << " " << indexToDrugIdMap[column[j]] << ":1";
+				}
+				break;
+			case DENSE:
+				data = dataTranspose->getDataVector(i);
+				for(int j = 1; j < nRows; j++){
+					out << " " << indexToDrugIdMap[j] << ":" << data[j];
+				}
+				break;
+			case SPARSE:
+				column = dataTranspose->getCompressedColumnVector(i);
+				data = dataTranspose->getDataVector(i);
+				nEntries = dataTranspose->getNumberOfEntries(i);
+				for(int j = 1; j < nEntries; j++){
+					out << " " << indexToDrugIdMap[column[j]] << ":" << data[j];
+				}
+				break;
 			}
 			out << endl;
 		}

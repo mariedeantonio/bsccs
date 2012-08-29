@@ -149,6 +149,8 @@ public:
 		cout << "]" << endl;
 	}
 
+	CompressedDataMatrix* transpose();
+
 protected:
 	void allocateMemory(int nCols);
 

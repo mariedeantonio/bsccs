@@ -500,7 +500,7 @@ void CyclicCoordinateDescent::update(
 				updateSufficientStatistics(delta, index);
 			}
 			
-			if ((index+1) % 100 == 0) {
+			if ((index+1) % 10000 == 0) {
 				cout << "Finished variable " << (index+1) << endl;
 			}
 			

@@ -25,6 +25,7 @@ public:
 	virtual ~ImputationHelper();
 
 	void sortColumns();
+	void resortColumns();
 	void push_back(int_vector* vecAbsent,int valMissing);
 	void push_back(int col, int indAbsent);
 	const vector<int>& getnMissingPerColumn() const;
@@ -54,6 +55,7 @@ public:
 	virtual ~NoImputation();
 
 	void sortColumns() {}
+	void resortColumns() {}
 	void push_back(int_vector* vecAbsent,int valMissing) {}
 	void push_back(int col, int indAbsent) {}
 	const vector<int>& getnMissingPerColumn() const {}

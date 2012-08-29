@@ -78,21 +78,37 @@ int set_difference(int* columns, int length, InputIterator first2, InputIterator
 }
 void ImputationHelper::sortColumns(){
 
-	int nCols = nCols_Orig;
-	for(int i = 0; i < nCols; i++)
+	colIndices.clear();
+	for(int i = 0; i < nCols_Orig; i++)
 		colIndices.push_back(i);
 	sort(colIndices.begin(),colIndices.end(),Compare(nMissingPerColumn));
 
-	reverseColIndices.resize(nCols,0);
-	for(int i = 0; i < nCols; i++)
+	reverseColIndices.resize(nCols_Orig,0);
+	for(int i = 0; i < nCols_Orig; i++)
 		reverseColIndices[colIndices[i]] = i;
 
 	reindexVector(nMissingPerColumn,colIndices);
 
 	vector<int_vector*> missingEntries_ = missingEntries;
-	for(int i = 0; i < nCols; i++){
+	for(int i = 0; i < nCols_Orig; i++){
 		missingEntries[i] = missingEntries_[colIndices[i]];
 	}
+}
+
+void ImputationHelper::resortColumns(){
+	reindexVector(nMissingPerColumn,reverseColIndices);
+
+	vector<int_vector*> missingEntries_ = missingEntries;
+	for(int i = 0; i < nCols_Orig; i++){
+		missingEntries[i] = missingEntries_[reverseColIndices[i]];
+	}
+	
+	colIndices.clear();
+	
+	for(int i = 0; i < nCols_Orig; i++)
+		colIndices.push_back(i);
+
+	reverseColIndices = colIndices;
 }
 
 void ImputationHelper::push_back(int_vector* vecAbsent, int valMissing){

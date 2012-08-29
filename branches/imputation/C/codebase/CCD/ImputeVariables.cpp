@@ -120,7 +120,6 @@ void ImputeVariables::impute(){
 		writeImputedData(i);
 
 		resetModelData();
-		resetMeanVar();
 	}
 }
 
@@ -145,7 +144,9 @@ void ImputeVariables::imputeColumn(int col){
 
 	vector<real> yPred(nRows);
 
-	ccd->getPredictiveEstimates(&yPred[0], &weights[0]);
+	vector<real> allOnes(nRows,1.0);
+
+	ccd->getPredictiveEstimates(&yPred[0], &allOnes[0]);
 
 	if(modelData->getFormatType(col) == DENSE)
 		randomizeImputationsLS(yPred, weights, col);
@@ -244,8 +245,10 @@ void ImputeVariables::randomizeImputationsLS(vector<real> yPred, vector<real> we
 	int nRows = modelData->getNumberOfRows();
 	vector<real> dist(nRows,0.0);
 
-	int nColsDone = (int)xMean.size();
-	for(int j = nColsDone; j < col; j++){
+	vector<real> xMean;
+	vector<real> xVar;
+
+	for(int j = 0; j < col; j++){
 		real* dataVec;
 		int* columnVec;
 		int nEntries = 0;
@@ -280,7 +283,7 @@ void ImputeVariables::randomizeImputationsLS(vector<real> yPred, vector<real> we
 			}
 		}
 	}
-	sigma = sigma/(n-2);
+	sigma = sqrt(sigma/(n-2));
 
 	for(int i = 0; i < nRows; i++){
 		if(weights[i]){
@@ -311,17 +314,6 @@ void ImputeVariables::resetModelData(){
 			vector<int> missing;
 			imputeHelper->getMissingEntries(j,missing);
 			modelData->removeFromColumnVector(j,missing);
-		}
-	}
-}
-
-void ImputeVariables::resetMeanVar(){
-	vector<int> nMissingPerColumn = imputeHelper->getnMissingPerColumn();
-	int ind = 0;
-	for(int i = (int)nMissingPerColumn.size()-2; i >= 0; i--){
-		if(nMissingPerColumn[i] > 0){
-			xMean.erase(xMean.begin()+i);
-			xVar.erase(xVar.begin()+i);
 		}
 	}
 }

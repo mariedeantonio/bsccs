@@ -24,7 +24,6 @@ public:
 	void randomizeImputationsLS(vector<real> yPred, vector<real> weights, int col);
 	void writeImputedData(int imputationNumber);
 	void resetModelData();
-	void resetMeanVar();
 private:
 	CCDArguments arguments;
 	CyclicCoordinateDescent*  ccd;
@@ -33,8 +32,6 @@ private:
 	ModelData* modelData;
 	ImputationHelper* imputeHelper;
 	int nImputations;
-	vector<real> xMean;
-	vector<real> xVar;
 };
 
 

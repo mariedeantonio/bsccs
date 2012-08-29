@@ -67,6 +67,8 @@ public:
 			}
 			out << endl;
 		}
+		if(dataTranspose)
+			delete dataTranspose;
 	}
 };
 

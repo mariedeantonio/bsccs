@@ -163,26 +163,33 @@ void ImputationHelper::getMissingEntries(int col, vector<int>& missing){
 }
 
 void ImputationHelper::getSampleMeanVariance(int col, real& Xmean, real& Xvar, real* dataVec, int* columnVec, FormatType formatType, int nRows, int nEntries){
-		real sumx2 = 0.0;
-		real sumx = 0.0;
-		int n = nRows - (int)missingEntries[col]->size();
-		if(formatType == DENSE) {
-			int ind = 0;
-			for(int i = 0; i < nRows; i++){
-				if(ind < (int)missingEntries[col]->size()){
-					if(i == missingEntries[col]->at(ind)){
-						ind++;
-					}
+	real sumx2 = 0.0;
+	real sumx = 0.0;
+	int n = nRows - (int)missingEntries[col]->size();
+	if(formatType == DENSE) {
+		int ind = 0;
+		for(int i = 0; i < nRows; i++){
+			if(ind < (int)missingEntries[col]->size()){
+				if(i == missingEntries[col]->at(ind)){
+					ind++;
 				}
+				else{
+					real xi = dataVec[i];
+					sumx2 += xi * xi;
+					sumx += xi;
+				}
+			}
+			else{
 				real xi = dataVec[i];
 				sumx2 += xi * xi;
 				sumx += xi;
 			}
 		}
-		else{
-			sumx = set_difference(columnVec,nEntries, missingEntries[col]->begin(), missingEntries[col]->end());
-			sumx2 = sumx;
-		}
-		Xmean = sumx/n;
-		Xvar =  (sumx2 - Xmean*Xmean*n)/(n-1);
+	}
+	else{
+		sumx = set_difference(columnVec,nEntries, missingEntries[col]->begin(), missingEntries[col]->end());
+		sumx2 = sumx;
+	}
+	Xmean = sumx/n;
+	Xvar =  (sumx2 - Xmean*Xmean*n)/(n-1);
 }

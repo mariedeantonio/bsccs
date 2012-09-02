@@ -30,6 +30,7 @@
 #include "io/RTestInputReader.h"
 #include "io/CCTestInputReader.h"
 #include "io/CoxInputReader.h"
+#include "io/BBRInputReader.h"
 #include "CrossValidationSelector.h"
 #include "CrossValidationDriver.h"
 #include "BootstrapSelector.h"
@@ -386,7 +387,10 @@ double initializeModel(
 		reader = new CCTestInputReader();
 	} else if (arguments.fileFormat == "cox-csv") {
 		reader = new CoxInputReader();
-	} else {
+	} else if (arguments.fileFormat == "bbr") {
+		reader = new BBRInputReader<NoImputation>();
+	}
+	else {
 		cerr << "Invalid file format." << endl;
 		exit(-1);
 	}

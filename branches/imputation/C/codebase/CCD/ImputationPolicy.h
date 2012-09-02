@@ -51,8 +51,8 @@ protected:
 
 class NoImputation{
 public:
-	NoImputation();
-	virtual ~NoImputation();
+	NoImputation() {}
+	virtual ~NoImputation() {}
 
 	void sortColumns() {}
 	void resortColumns() {}

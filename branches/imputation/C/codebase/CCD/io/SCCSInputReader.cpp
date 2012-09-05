@@ -15,6 +15,7 @@
 #include <algorithm>
 
 #include "SCCSInputReader.h"
+#include "SparseIndexer.h"
 
 #ifdef MY_RCPP_FLAG
 // For OSX 10.6, R is built with 4.2.1 which has a bug in stringstream
@@ -74,6 +75,8 @@ void SCCSInputReader::readFile(const char* fileName) {
 
 	vector<int_vector*> unorderColumns = vector<int_vector*>();
 
+	SparseIndexer indexer(*modelData);
+
 	int numPatients = 0;
 	int numDrugs = 0;
 	string currentPid = MISSING_STRING;
@@ -124,57 +127,37 @@ void SCCSInputReader::readFile(const char* fileName) {
 			modelData->offs.push_back(thisOffs);
 
 			// Parse remaining (variable-length) entries
-			DrugIdType drug;
-			vector<DrugIdType> uniqueDrugsForEntry;
+			DrugIdType drug;		
 			while (ss >> drug) {
 				if (drug == noDrug) { // No drug
 					// Do nothing
 				} else {
-					if (modelData->drugMap.count(drug) == 0) {
-						modelData->drugMap.insert(make_pair(drug,numDrugs));
-						unorderColumns.push_back(new int_vector());
-						numDrugs++;
-					}
-					if (!listContains(uniqueDrugsForEntry, drug)) {
-						// Add to CSC storage
-						unorderColumns[modelData->drugMap[drug]]->push_back(currentEntry);
-						uniqueDrugsForEntry.push_back(drug);
-					}
+					if (!indexer.hasColumn(drug)) {
+						// Add new column
+						indexer.addColumn(drug, INDICATOR);
+					}		
+					// Add to CSC storage
+					indexer.getColumn(drug).add_data(currentEntry, 1.0);
 				}
 			}
-
 			currentEntry++;
 		}
 	}
 
 	modelData->nevents.push_back(numEvents); // Save last patient
 
-//	columns = vector<int_vector>(unorderColumns.size());
-	modelData->columns.resize(unorderColumns.size());
-	modelData->formatType.resize(unorderColumns.size(), INDICATOR);
-
-	// Sort drugs numerically
-	int index = 0;
-	for (map<DrugIdType,int>::iterator ii = modelData->drugMap.begin(); ii != modelData->drugMap.end(); ii++) {
-		if (modelData->columns[index]) {
-			delete modelData->columns[index];
-		}
-	   	modelData->columns[index] = unorderColumns[(*ii).second];
-	   	modelData->drugMap[(*ii).first] = index;
-	   	modelData->indexToDrugIdMap.insert(make_pair(index, (*ii).first));
-	   	index++;
-	}
-
+	// Easy to sort columns now in AOS format
+	modelData->sortColumns(CompressedDataColumn::sortNumerically);
+	
 #ifndef MY_RCPP_FLAG
 	cout << "Read " << currentEntry << " data lines from " << fileName << endl;
 #endif
 //	Rprintf("Read %d data lines from %s\n", currentEntry, fileName);
 //	Rprintf("Number of drugs: %d\n", numDrugs);
 //	cout << "Number of patients: " << numPatients << endl;
-//	cout << "Number of drugs: " << numDrugs << endl;
+//	cout << "Number of drugs: " << modelData->getNumberOfColumns() << endl;
 
 	modelData->nPatients = numPatients;
-	modelData->nCols = modelData->columns.size();
 	modelData->nRows = currentEntry;
 	modelData->conditionId = outcomeId;
 

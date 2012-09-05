@@ -57,20 +57,6 @@ int* ModelData::getOffsetVector() { // TODO deprecated
 	return makeDeepCopy(&offs[0], offs.size());
 }
 
-map<int, DrugIdType> ModelData::getDrugNameMap() {
-	return indexToDrugIdMap;
-}
-
-map<DrugIdType, int> ModelData::getDrugMap() {
-	return drugMap;
-}
-
 void ModelData::sortDataColumns(vector<int> sortedInds){
-	reindexVector(formatType,sortedInds);
-	vector<real_vector*> tempData = data;
-	vector<int_vector*> colData = columns;
-	for(int i = 0; i < nCols; i++){
-		data[i] = tempData[sortedInds[i]];
-		columns[i] = colData[sortedInds[i]];
-	}
+	reindexVector(allColumns,sortedInds);
 }

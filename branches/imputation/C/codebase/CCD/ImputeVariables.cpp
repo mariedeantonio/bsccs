@@ -218,7 +218,7 @@ void ImputeVariables::randomizeImputationsLR(vector<real> yPred, vector<real> we
 		for(int i = 0; i < nRows; i++){
 			if(weights[i]){
 				real r = (real)rand()/RAND_MAX;
-				if(r < yPred[i])
+				if(0.5 < yPred[i])
 					y.push_back(i);
 			}
 		}
@@ -229,7 +229,7 @@ void ImputeVariables::randomizeImputationsLR(vector<real> yPred, vector<real> we
 		for(int i = 0; i < modelData->getNumberOfRows(); i++){
 			if(weights[i]){
 				real r = (real)rand()/RAND_MAX;
-				if(r < yPred[i])
+				if(0.5 < yPred[i])
 					y[i] = 1.0;
 				else
 					y[i] = 0.0;
@@ -288,8 +288,8 @@ void ImputeVariables::randomizeImputationsLS(vector<real> yPred, vector<real> we
 	for(int i = 0; i < nRows; i++){
 		if(weights[i]){
 			double predInterval = 1.96 * sigma * sqrt(1 + 1/n + dist[i]/(n-1));
-			y[i] = randn_notrig(yPred[i],predInterval);
-//			y[i] = yPred[i];
+//			y[i] = randn_notrig(yPred[i],predInterval);
+			y[i] = yPred[i];
 		}
 	}
 }

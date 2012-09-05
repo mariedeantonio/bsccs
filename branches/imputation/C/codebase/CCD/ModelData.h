@@ -48,8 +48,7 @@ public:
 	void setYVector(vector<real> y_);
 	int* getNEventVector();
 	int* getOffsetVector();
-	map<int, DrugIdType> getDrugNameMap();
-	map<DrugIdType, int> getDrugMap();
+//	map<int, DrugIdType> getDrugNameMap();
 	int getNumberOfPatients();
 	string getConditionId();
 	std::vector<int>* getPidVectorSTL();
@@ -66,8 +65,12 @@ public:
 		return pid;
 	}
 	
-	void sortDataColumns(vector<int> sortedInds);
+	const std::vector<int>& getNEventsVectorRef() const {
+		return nevents;
+	}
 
+	void sortDataColumns(vector<int> sortedInds);
+	
 	// TODO Improve encapsulation
 	friend class SCCSInputReader;
 	friend class CLRInputReader;
@@ -78,6 +81,8 @@ public:
 	template <class ImputationPolicy> friend class CSVInputReader;
 
 private:
+	// Disable copy-constructors
+	ModelData(const ModelData&);
 
 	template <class T>
 	T* makeDeepCopy(T *original, unsigned int length) {
@@ -92,8 +97,6 @@ private:
 	vector<real> z;
 	vector<int> offs;
 	vector<int> nevents;
-	map<DrugIdType, int> drugMap;
-	map<int, DrugIdType> indexToDrugIdMap;
 	string conditionId;
 };
 

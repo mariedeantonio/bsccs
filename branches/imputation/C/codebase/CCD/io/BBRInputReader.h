@@ -10,6 +10,7 @@
 
 #include "InputReader.h"
 #include "ImputationPolicy.h"
+#include "SparseIndexer.h"
 
 using namespace std;
 
@@ -33,7 +34,7 @@ public:
 	virtual ~BBRInputReader() {}
 
 	virtual void readFile(const char* fileName){
-
+		// Currently supports only INDICATOR and DENSE columns
 		ifstream in(fileName);
 		if (!in) {
 			cerr << "Unable to open " << fileName << endl;
@@ -47,20 +48,19 @@ public:
 		vector<string> strVector;
 		string outerDelimiter(DELIMITER);
 
+		SparseIndexer indexer(*modelData);
+
 		// Allocate a column for intercept
-		real_vector* thisData = new real_vector();
-		modelData->push_back(NULL, thisData, DENSE);
 		int_vector* nullVector = new int_vector();
 		imputePolicy->push_back(nullVector,0);
-		modelData->drugMap.insert(make_pair(0,0));
-		modelData->indexToDrugIdMap.insert(make_pair(0,0));
+
+		indexer.addColumn(0, DENSE);
 
 		int currentRow = 0;
 		modelData->nRows = 0;
 		int maxCol = 0;
 		while (getline(in, line) && (currentRow < MAX_ENTRIES)) {
 			if (!line.empty()) {
-
 				strVector.clear();
 				split(strVector, line, outerDelimiter);
 
@@ -85,7 +85,7 @@ public:
 				modelData->offs.push_back(1);
 
 				//Fill intercept
-				modelData->data[0]->push_back(1.0);
+				modelData->getColumn(0).add_data(currentRow, 1.0);
 
 				// Parse covariates
 				for (int i = 0; i < (int)strVector.size() - 1; ++i){
@@ -93,52 +93,31 @@ public:
 					split(thisCovariate, strVector[i + 1], ":");
 					if((int)thisCovariate.size() == 2){
 						DrugIdType drug = static_cast<DrugIdType>(atof(thisCovariate[0].c_str()));
-						if(modelData->drugMap.count(drug) == 0){
-							maxCol++;
-							modelData->drugMap.insert(make_pair(drug,maxCol));
-							modelData->indexToDrugIdMap.insert(make_pair(maxCol,drug));
-
-							int_vector* thisColumn = new int_vector();
-							real_vector* thisData = new real_vector();
-							modelData->push_back(thisColumn, thisData, INDICATOR);
+						if (!indexer.hasColumn(drug)) {
+							indexer.addColumn(drug, INDICATOR);
 							int_vector* nullVector = new int_vector();
 							imputePolicy->push_back(nullVector,0);
 						}
-						int col = modelData->drugMap[drug];
-						if(modelData->formatType[col] == DENSE){
-							for(int j = (int)modelData->data[col]->size(); j < currentRow; j++){
-								modelData->data[col]->push_back(0.0);
-							}
-						}
+						int col = indexer.getIndex(drug);
 						if(thisCovariate[1] == MISSING_STRING_1 || thisCovariate[1] == MISSING_STRING_2){
-							if(modelData->formatType[col] == DENSE){
-								modelData->data[col]->push_back(0.0);
+							if(modelData->getFormatType(col) == DENSE){
+								modelData->getColumn(col).add_data(currentRow, 0.0);
 							}
 							imputePolicy->push_back(col,currentRow);
 						}
 						else{
 							real value = static_cast<real>(atof(thisCovariate[1].c_str()));
-							if(modelData->formatType[col] == DENSE){
-								modelData->data[col]->push_back(value);
+							if(modelData->getFormatType(col) == DENSE){
+								modelData->getColumn(col).add_data(currentRow, value);
 							}
-							else if(modelData->formatType[col] == INDICATOR){
+							else if(modelData->getFormatType(col) == INDICATOR){
 								if(value != 1.0 && value != 0.0){
-									if(modelData->columns[col]->size() > 0){
 										modelData->convertColumnToDense(col);
-									}
-									else{
-										delete modelData->columns[col];
-										modelData->columns[col] = NULL;
-									}
-									for(int j = (int)modelData->data[col]->size(); j < currentRow; j++){
-										modelData->data[col]->push_back(0.0);
-									}
-									modelData->data[col]->push_back(value);
-									modelData->formatType[col] = DENSE;
+									modelData->getColumn(col).add_data(currentRow,value);
 								}
 								else{
 									if(value == 1.0){
-										modelData->columns[col]->push_back(currentRow);
+										modelData->getColumn(col).add_data(currentRow,1.0);
 									}
 								}
 							}
@@ -150,28 +129,16 @@ public:
 			}
 		}
 
-		modelData->nPatients = numCases;
-		modelData->nCols = modelData->columns.size();
-		modelData->conditionId = "0";
-
-		modelData->nevents.push_back(1); // Save last patient
-
-		for(int j = 0; j < modelData->nCols; j++){
-			if(modelData->formatType[j] == DENSE){
-				for(int i = (int)modelData->data[j]->size(); i < modelData->nRows; i++){
-					modelData->data[j]->push_back(0.0);
-				}
-			}
-		}
-		int index = modelData->columns.size();
-
 #ifndef MY_RCPP_FLAG
-		cout << "ImputeInputReader" << endl;
+		cout << "RTestInputReader" << endl;
 		cout << "Read " << currentRow << " data lines from " << fileName << endl;
 		cout << "Number of stratum: " << numCases << endl;
 		cout << "Number of covariates: " << modelData->nCols << endl;
 #endif
 
+		modelData->nPatients = numCases;
+		modelData->nRows = currentRow;
+		modelData->conditionId = "0";
 	}
 
 	ImputationPolicy* getImputationPolicy(){

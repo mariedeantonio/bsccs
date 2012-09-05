@@ -53,7 +53,7 @@ CyclicCoordinateDescent::CyclicCoordinateDescent(
 	N = reader->getNumberOfPatients();
 	K = reader->getNumberOfRows();
 	J = reader->getNumberOfColumns();
-
+	
 	hXI = reader;
 	hY = reader->getYVector(); // TODO Delegate all data to ModelSpecifics
 	hOffs = reader->getOffsetVector();
@@ -274,17 +274,14 @@ void CyclicCoordinateDescent::logResults(const char* fileName) {
 		cerr << "Unable to open log file: " << fileName << endl;
 		exit(-1);
 	}
-
-	ModelData* reader = dynamic_cast<ModelData*>(hXI);
-	map<int, DrugIdType> drugMap = reader->getDrugNameMap();
-
 	string sep(","); // TODO Make option
 
 	outLog << "Drug_concept_id" << sep << "Condition_concept_id" << sep << "score" << endl;
 
-	for (int i = 0; i < J; i++) {
-		outLog << drugMap[i] << sep <<
-		conditionId << sep << hBeta[i] << endl;
+	for (int i = 0; i < J; i++) {		
+		outLog << hXI->getColumn(i).getLabel() <<
+				sep <<
+				conditionId << sep << hBeta[i] << endl;
 	}
 	outLog.flush();
 	outLog.close();
@@ -500,7 +497,7 @@ void CyclicCoordinateDescent::update(
 				updateSufficientStatistics(delta, index);
 			}
 			
-			if ((index+1) % 10000 == 0) {
+			if ((index+1) % 100 == 0) {
 				cout << "Finished variable " << (index+1) << endl;
 			}
 			

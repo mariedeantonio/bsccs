@@ -33,6 +33,7 @@ public:
 	virtual ~CSVInputReader() {}
 
 	virtual void readFile(const char* fileName) {	
+		// Currently supports only DENSE columns
 		ifstream in(fileName);
 		if (!in) {
 			cerr << "Unable to open " << fileName << endl;
@@ -61,8 +62,7 @@ public:
 				if (numCovariates == MISSING_LENGTH) {
 					numCovariates = strVector.size() - 2;
 					for (int i = 0; i < numCovariates; ++i) {
-						real_vector* thisColumn = new real_vector();
-						modelData->push_back(NULL, thisColumn, INDICATOR);
+						modelData->push_back(DENSE);
 						int_vector* nullVector = new int_vector();
 						imputePolicy->push_back(nullVector,0);
 					}
@@ -94,15 +94,12 @@ public:
 				// Parse covariates
 				for (int i = 0; i < numCovariates; ++i) {
 					if(strVector[2 + i] == MISSING_STRING_1 || strVector[2 + i] == MISSING_STRING_2){
-						modelData->data[i]->push_back(0);
+						modelData->getColumn(i).add_data(currentRow, 0.0);
 						imputePolicy->push_back(i,currentRow);
 					}
 					else{
 						real value = static_cast<real>(atof(strVector[2 + i].c_str()));
-						modelData->data[i]->push_back(value);
-						if(value != 1.0 && value != 0.0){
-							modelData->formatType[i] = DENSE;
-						}
+						modelData->getColumn(i).add_data(currentRow, value);
 					}
 				}
 				currentRow++;
@@ -110,12 +107,11 @@ public:
 		}
 
 		modelData->nPatients = numCases;
-		modelData->nCols = modelData->columns.size();
+		modelData->nCols = modelData->getNumberOfColumns();
 		modelData->nRows = currentRow;
 		modelData->conditionId = "0";
 
-		modelData->nevents.push_back(1); // Save last patient
-
+/*
 		for(int j = 0; j < modelData->nCols; j++){
 			if(modelData->formatType[j] == INDICATOR){
 				if(modelData->columns[j])
@@ -131,13 +127,14 @@ public:
 		}
 
 		int index = modelData->columns.size();
-
+*/
 #ifndef MY_RCPP_FLAG
 		cout << "ImputeInputReader" << endl;
 		cout << "Read " << currentRow << " data lines from " << fileName << endl;
 		cout << "Number of stratum: " << numCases << endl;
 		cout << "Number of covariates: " << numCovariates << endl;
 #endif
+		
 	}
 
 	ImputationPolicy* getImputationPolicy(){

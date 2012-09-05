@@ -19,7 +19,7 @@ public:
 	virtual ~BBROutputWriter() {}
 
 	void BBROutputWriter::writeFile(const char* fileName, ModelData* modelData) {
-
+		
 		int nRows = modelData->getNumberOfRows();
 		int nCols = modelData->getNumberOfColumns();
 
@@ -28,7 +28,7 @@ public:
 		ofstream out;
 		out.open(fileName,ios::out);
 
-		map<DrugIdType,int> indexToDrugIdMap = modelData->getDrugNameMap();
+		//map<DrugIdType,int> indexToDrugIdMap = modelData->getDrugNameMap();
 		vector<real> y = modelData->getYVectorRef();
 		vector<real> z = modelData->getZVectorRef();
 		for(int i = 0; i < nRows; i++){
@@ -44,16 +44,16 @@ public:
 			switch (formatType)
 			{
 			case INDICATOR:
-				column = dataTranspose->getCompressedColumnVector(i);
+//				column = dataTranspose->getCompressedColumnVector(i);
 				nEntries = dataTranspose->getNumberOfEntries(i);
 				for(int j = 1; j < nEntries; j++){
-					out << " " << indexToDrugIdMap[column[j]] << ":1";
+					out << " " << dataTranspose->getColumn(j).getNumericalLabel() << ":1";
 				}
 				break;
 			case DENSE:
 				data = dataTranspose->getDataVector(i);
 				for(int j = 1; j < nRows; j++){
-					out << " " << indexToDrugIdMap[j] << ":" << data[j];
+					out << " " << dataTranspose->getColumn(j).getNumericalLabel() << ":" << data[j];
 				}
 				break;
 			case SPARSE:
@@ -61,7 +61,7 @@ public:
 				data = dataTranspose->getDataVector(i);
 				nEntries = dataTranspose->getNumberOfEntries(i);
 				for(int j = 1; j < nEntries; j++){
-					out << " " << indexToDrugIdMap[column[j]] << ":" << data[j];
+					out << " " << modelData->getColumn(column[j]).getNumericalLabel() << ":" << data[j];
 				}
 				break;
 			}

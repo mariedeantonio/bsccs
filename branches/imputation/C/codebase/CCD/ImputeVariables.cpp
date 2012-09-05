@@ -152,29 +152,6 @@ void ImputeVariables::imputeColumn(int col){
 		randomizeImputationsLS(yPred, weights, col);
 	else
 		randomizeImputationsLR(yPred, weights, col);
-	//---------------------
-	//char fname[100];
-	//sprintf(fname,"Release/DATA_%d.txt",i);
-	//FILE* fp = fopen(fname,"a");
-	//vector<int> zz(modelData->getNumberOfRows(),0);
-	//if(modelData->getFormatType(j) == DENSE){
-	//	real* y = modelData->getDataVector(j);
-	//	for(int ii = 0; ii < modelData->getNumberOfRows(); ii++){
-	//		fprintf(fp,"%f ",y[ii]);
-	//	}
-
-	//}
-	//else{
-	//	int* z = modelData->getCompressedColumnVector(j);
-	//	for(int ii = 0; ii < modelData->getNumberOfEntries(j); ii++){
-	//		zz[z[ii]] = 1;
-	//	}
-	//	for(int ii = 0; ii < nRows; ii++)
-	//		fprintf(fp,"%d ",zz[ii]);
-	//}
-	//fprintf(fp,"\n");
-	//fclose(fp);
-	//----------------------
 
 	if (ccd)
 		delete ccd;
@@ -218,7 +195,7 @@ void ImputeVariables::randomizeImputationsLR(vector<real> yPred, vector<real> we
 		for(int i = 0; i < nRows; i++){
 			if(weights[i]){
 				real r = (real)rand()/RAND_MAX;
-				if(0.5 < yPred[i])
+				if(r < yPred[i])
 					y.push_back(i);
 			}
 		}
@@ -229,7 +206,7 @@ void ImputeVariables::randomizeImputationsLR(vector<real> yPred, vector<real> we
 		for(int i = 0; i < modelData->getNumberOfRows(); i++){
 			if(weights[i]){
 				real r = (real)rand()/RAND_MAX;
-				if(0.5 < yPred[i])
+				if(r < yPred[i])
 					y[i] = 1.0;
 				else
 					y[i] = 0.0;
@@ -288,8 +265,8 @@ void ImputeVariables::randomizeImputationsLS(vector<real> yPred, vector<real> we
 	for(int i = 0; i < nRows; i++){
 		if(weights[i]){
 			double predInterval = 1.96 * sigma * sqrt(1 + 1/n + dist[i]/(n-1));
-//			y[i] = randn_notrig(yPred[i],predInterval);
-			y[i] = yPred[i];
+			y[i] = randn_notrig(yPred[i],predInterval);
+//			y[i] = yPred[i];
 		}
 	}
 }

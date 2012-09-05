@@ -239,19 +239,19 @@ void CompressedDataColumn::convertColumnToDense(int nRows) {
 
 	int* indicators = getColumns();
 	int n = getNumberOfEntries();
-	//	int nonzero = 0;
+//	int nonzero = 0;
 	for (int i = 0; i < n; ++i) {
 		const int k = indicators[i];
-		//		cerr << " " << k;
-		//		nonzero++;
+//		cerr << " " << k;
+//		nonzero++;
 
 		const real value = 1.0;
 
 		data->at(k) = value;
 	}
-	//	cerr << endl;
-	//	cerr << "Non-zero count: " << nonzero << endl;
-	//	exit(0);
+//	cerr << endl;
+//	cerr << "Non-zero count: " << nonzero << endl;
+//	exit(0);
 	formatType = DENSE;
 	delete columns; columns = NULL;
 }

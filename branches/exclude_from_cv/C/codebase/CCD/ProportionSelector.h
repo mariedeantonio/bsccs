@@ -22,7 +22,7 @@ public:
 
 	virtual ~ProportionSelector();
 
-	virtual void permute();
+	virtual void permute(std::vector<real>* weightsExclude = NULL);
 
 	virtual void getWeights(int batch, std::vector<real>& weights);
 

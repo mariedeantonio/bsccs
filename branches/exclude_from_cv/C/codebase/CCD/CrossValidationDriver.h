@@ -27,7 +27,7 @@ public:
 	virtual void drive(
 			CyclicCoordinateDescent& ccd,
 			AbstractSelector& selector,
-			const CCDArguments& arguments, vector<int>* excludeFromCV = NULL);
+			const CCDArguments& arguments, vector<real>* weightsExclude = NULL);
 
 	void resetForOptimal(
 			CyclicCoordinateDescent& ccd,

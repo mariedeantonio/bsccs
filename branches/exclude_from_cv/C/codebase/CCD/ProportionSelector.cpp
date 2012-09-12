@@ -26,7 +26,7 @@ ProportionSelector::~ProportionSelector() {
 	// Nothing to do
 }
 
-void ProportionSelector::permute() {
+void ProportionSelector::permute(std::vector<real>* weightsExclude) {
 //	selectedSet.clear();
 //
 //	if (type == SUBJECT) {

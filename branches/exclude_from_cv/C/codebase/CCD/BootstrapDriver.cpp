@@ -39,19 +39,14 @@ BootstrapDriver::~BootstrapDriver() {
 void BootstrapDriver::drive(
 		CyclicCoordinateDescent& ccd,
 		AbstractSelector& selector,
-		const CCDArguments& arguments, vector<int>* excludeFromBS) {
+		const CCDArguments& arguments, vector<real>* weightsExclude) {
 
 	// TODO Make sure that selector is type-of BootstrapSelector
 	std::vector<real> weights;
 
 	for (int step = 0; step < replicates; step++) {
-		selector.permute();
+		selector.permute(weightsExclude);
 		selector.getWeights(0, weights);
-		if(excludeFromBS){
-			for(int j = 0; j < excludeFromBS->size(); j++){
-				weights[excludeFromBS->at(j)] = 0.0;
-			}
-		}
 		ccd.setWeights(&weights[0]);
 
 		std::cout << std::endl << "Running replicate #" << (step + 1) << std::endl;

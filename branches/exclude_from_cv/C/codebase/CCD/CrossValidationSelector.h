@@ -23,7 +23,7 @@ public:
 
 	virtual ~CrossValidationSelector();
 
-	void permute();
+	void permute(std::vector<real>* weightsExclude = NULL);
 
 	void getWeights(int batch, std::vector<real>& weights);
 

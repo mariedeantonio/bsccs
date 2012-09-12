@@ -28,7 +28,7 @@ BootstrapSelector::~BootstrapSelector() {
 	// Nothing to do
 }
 
-void BootstrapSelector::permute() {
+void BootstrapSelector::permute(std::vector<real>* weightsExclude) {
 	selectedSet.clear();
 
 	if (type == SUBJECT) {

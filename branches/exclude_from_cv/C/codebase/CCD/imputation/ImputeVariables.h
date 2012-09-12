@@ -19,7 +19,7 @@ public:
 	void impute();
 	void imputeColumn(int col);
 	void getColumnToImpute(int col, real* y);
-	void initializeCCDModel(int col, vector<real> weights);
+	void initializeCCDModel(int col);
 	void randomizeImputationsLR(vector<real> yPred, vector<real> weights, int col);
 	void randomizeImputationsLS(vector<real> yPred, vector<real> weights, int col);
 	void writeImputedData(int imputationNumber);

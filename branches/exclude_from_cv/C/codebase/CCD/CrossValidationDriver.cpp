@@ -87,7 +87,7 @@ void CrossValidationDriver::resetForOptimal(
 void CrossValidationDriver::drive(
 		CyclicCoordinateDescent& ccd,
 		AbstractSelector& selector,
-		const CCDArguments& arguments, vector<int>* excludeFromCV) {
+		const CCDArguments& arguments, vector<real>* weightsExclude) {
 
 	// TODO Check that selector is type of CrossValidationSelector
 
@@ -100,17 +100,18 @@ void CrossValidationDriver::drive(
 		ccd.setHyperprior(point);
 
 		for (int i = 0; i < arguments.foldToCompute; i++) {
-
 			int fold = i % arguments.fold;
 			if (fold == 0) {
-				selector.permute(); // Permute every full cross-validation rep
+				selector.permute(weightsExclude); // Permute every full cross-validation rep
 			}
 
 			// Get this fold and update
 			selector.getWeights(fold, weights);
-			if(excludeFromCV){
-				for(int j = 0; j < excludeFromCV->size(); j++){
-					weights[excludeFromCV->at(j)] = 0.0;
+			if(weightsExclude){
+				for(int j = 0; j < (int)weightsExclude->size(); j++){
+					if(weightsExclude->at(j) == 1.0){
+						weights[j] = 0.0;
+					}
 				}
 			}
 			ccd.setWeights(&weights[0]);
@@ -119,11 +120,14 @@ void CrossValidationDriver::drive(
 
 			// Compute predictive loglikelihood for this fold
 			selector.getComplement(weights);
-			if(excludeFromCV){
-				for(int j = 0; j < excludeFromCV->size(); j++){
-					weights[excludeFromCV->at(j)] = 0.0;
+			if(weightsExclude){
+				for(int j = 0; j < (int)weightsExclude->size(); j++){
+					if(weightsExclude->at(j) == 1.0){
+						weights[j] = 0.0;
+					}
 				}
 			}
+
 			double logLikelihood = ccd.getPredictiveLogLikelihood(&weights[0]);
 
 			std::cout << "Grid-point #" << (step + 1) << " at " << point;

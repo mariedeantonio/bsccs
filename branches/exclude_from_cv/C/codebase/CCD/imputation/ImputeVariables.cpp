@@ -136,21 +136,19 @@ void ImputeVariables::imputeColumn(int col){
 	modelData->setNumberOfColumns(col);
 
 	vector<real> weights(nRows,1.0);
-	initializeCCDModel(col,weights);
+	imputeHelper->setWeightsForImputation(col,weights,nRows);
 
-	vector<int> missingEntries;
-	imputeHelper->getMissingEntries(col,missingEntries);
+	vector<real> weightsMissing = weights;
+	getComplement(weightsMissing);
 
+	initializeCCDModel(col);
 	// Do cross validation for finding optimum hyperparameter value
 	CrossValidationSelector selector(arguments.fold, modelData->getPidVectorSTL(), SUBJECT, rand());
 	CrossValidationDriver driver(arguments.gridSteps, arguments.lowerLimit, arguments.upperLimit);
-	driver.drive(*ccd, selector, arguments, &missingEntries);
+	driver.drive(*ccd, selector, arguments, &weightsMissing);
 	driver.logResults(arguments);
 	driver.resetForOptimal(*ccd, selector, arguments);
 
-	weights.clear();
-	imputeHelper->setWeightsForImputation(col,weights,nRows);
-	
 	//initializeCCDModel(col,weights);
 	// No need to initialize ccd again, just reset weights.
 	ccd->setWeights(&weights[0]);
@@ -190,14 +188,13 @@ void ImputeVariables::getColumnToImpute(int col, real* y){
 	}
 }
 
-void ImputeVariables::initializeCCDModel(int col, vector<real> weights){
+void ImputeVariables::initializeCCDModel(int col){
 	if(modelData->getFormatType(col) == DENSE)	//Least Squares
 		model = new ModelSpecifics<LeastSquares<real>,real>(*modelData);
 	else										//Logistic Regression
 		model = new ModelSpecifics<LogisticRegression<real>,real>(*modelData);
 
 	ccd = new CyclicCoordinateDescent(modelData, *model);
-	ccd->setWeights(&weights[0]);
 
 	if(arguments.useNormalPrior)
 		ccd->setPriorType(NORMAL);

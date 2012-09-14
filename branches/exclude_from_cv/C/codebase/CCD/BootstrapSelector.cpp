@@ -31,9 +31,20 @@ BootstrapSelector::~BootstrapSelector() {
 void BootstrapSelector::permute(std::vector<real>* weightsExclude) {
 	selectedSet.clear();
 
+	// Get non-excluded indices
+	std::vector<int> indicesIncluded;
+	if(weightsExclude){
+		for(int i = 0; i < weightsExclude->size(); i++){
+			if(weightsExclude->at(i) == 0){
+				indicesIncluded.push_back(i);
+			}
+		}
+	}
+	int N_new = indicesIncluded.size();
 	if (type == SUBJECT) {
-		for (int i = 0; i < N; i++) {
-			int draw = rand() / (RAND_MAX / N + 1);
+		for (int i = 0; i < N_new; i++) {
+			int ind = rand() / (RAND_MAX / N_new + 1);
+			int draw = indicesIncluded[ind];
 			selectedSet.insert(draw);
 		}
 	} else {

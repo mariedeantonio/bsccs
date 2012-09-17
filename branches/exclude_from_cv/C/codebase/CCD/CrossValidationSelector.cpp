@@ -16,7 +16,8 @@ CrossValidationSelector::CrossValidationSelector(
 		int inFold,
 		std::vector<int>* inIds,
 		SelectorType inType,
-		long inSeed) : AbstractSelector(inIds, inType, inSeed), fold(inFold) {
+		long inSeed,
+		std::vector<real>* wtsExclude) : AbstractSelector(inIds, inType, inSeed), fold(inFold) {
 
 	// Calculate interval starts
 	intervalStart.reserve(fold + 1);
@@ -45,6 +46,7 @@ CrossValidationSelector::CrossValidationSelector(
 	for (int i = 0; i < N; ++i) {
 		permutation.push_back(i);
 	}
+	weightsExclude = wtsExclude;
 }
 
 CrossValidationSelector::~CrossValidationSelector() {
@@ -89,7 +91,7 @@ void CrossValidationSelector::getComplement(std::vector<real>& weights) {
 	}
 }
 
-void CrossValidationSelector::permute(std::vector<real>* weightsExclude) {
+void CrossValidationSelector::permute() {
 
 	// Do random shuffle
 	if (!deterministic) {

@@ -18,11 +18,12 @@ public:
 			int inReplicates,
 			std::vector<int>* inIds,
 			SelectorType inType,
-			long inSeed);
+			long inSeed,
+			std::vector<real>* wtsExclude = NULL);
 
 	virtual ~BootstrapSelector();
 
-	virtual void permute(std::vector<real>* weightsExclude = NULL);
+	virtual void permute();
 
 	virtual void getWeights(int batch, std::vector<real>& weights);
 
@@ -30,6 +31,7 @@ public:
 
 private:
 	std::multiset<int> selectedSet;
+	std::vector<int> indicesIncluded;
 };
 
 #endif /* BOOTSTRAPSELECTOR_H_ */

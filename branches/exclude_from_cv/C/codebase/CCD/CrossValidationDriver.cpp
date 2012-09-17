@@ -16,11 +16,12 @@
 CrossValidationDriver::CrossValidationDriver(
 			int iGridSize,
 			double iLowerLimit,
-			double iUpperLimit) : gridSize(iGridSize),
+			double iUpperLimit,
+			vector<real>* wtsExclude) : gridSize(iGridSize),
 			lowerLimit(iLowerLimit), upperLimit(iUpperLimit) {
 
 	// Do anything???
-
+	weightsExclude = wtsExclude;
 }
 
 CrossValidationDriver::~CrossValidationDriver() {
@@ -87,7 +88,7 @@ void CrossValidationDriver::resetForOptimal(
 void CrossValidationDriver::drive(
 		CyclicCoordinateDescent& ccd,
 		AbstractSelector& selector,
-		const CCDArguments& arguments, vector<real>* weightsExclude) {
+		const CCDArguments& arguments) {
 
 	// TODO Check that selector is type of CrossValidationSelector
 
@@ -102,7 +103,7 @@ void CrossValidationDriver::drive(
 		for (int i = 0; i < arguments.foldToCompute; i++) {
 			int fold = i % arguments.fold;
 			if (fold == 0) {
-				selector.permute(weightsExclude); // Permute every full cross-validation rep
+				selector.permute(); // Permute every full cross-validation rep
 			}
 
 			// Get this fold and update

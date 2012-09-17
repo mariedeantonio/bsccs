@@ -28,7 +28,7 @@ public:
 	virtual void drive(
 			CyclicCoordinateDescent& ccd,
 			AbstractSelector& selector,
-			const CCDArguments& arguments, vector<real>* weightsExclude = NULL);
+			const CCDArguments& arguments);
 
 	virtual void logResults(const CCDArguments& arguments);
 

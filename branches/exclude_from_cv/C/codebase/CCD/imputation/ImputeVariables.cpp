@@ -143,9 +143,9 @@ void ImputeVariables::imputeColumn(int col){
 
 	initializeCCDModel(col);
 	// Do cross validation for finding optimum hyperparameter value
-	CrossValidationSelector selector(arguments.fold, modelData->getPidVectorSTL(), SUBJECT, rand());
-	CrossValidationDriver driver(arguments.gridSteps, arguments.lowerLimit, arguments.upperLimit);
-	driver.drive(*ccd, selector, arguments, &weightsMissing);
+	CrossValidationSelector selector(arguments.fold, modelData->getPidVectorSTL(), SUBJECT, rand(), &weightsMissing);
+	CrossValidationDriver driver(arguments.gridSteps, arguments.lowerLimit, arguments.upperLimit, &weightsMissing);
+	driver.drive(*ccd, selector, arguments);
 	driver.logResults(arguments);
 	driver.resetForOptimal(*ccd, selector, arguments);
 

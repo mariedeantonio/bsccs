@@ -30,7 +30,7 @@ public:
 
 	virtual ~AbstractSelector();
 
-	virtual void permute(std::vector<real>* weightsExclude = NULL) = 0; // pure virtual
+	virtual void permute() = 0; // pure virtual
 
 	virtual void getWeights(int batch, std::vector<real>& weights) = 0; // pure virtual
 

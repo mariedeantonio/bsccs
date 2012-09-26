@@ -66,9 +66,10 @@ ImputeVariables::~ImputeVariables(){
 		delete modelData;
 }
 
-void ImputeVariables::initialize(CCDArguments args, int numberOfImputations){
+void ImputeVariables::initialize(CCDArguments args, int numberOfImputations, bool inclY){
 	arguments = args;
 	nImputations = numberOfImputations;
+	includeY = inclY;
 	if(arguments.fileFormat == "csv"){
 		reader = new CSVInputReader<ImputationHelper>();
 		static_cast<CSVInputReader<ImputationHelper>*>(reader)->readFile(arguments.inFileName.c_str());
@@ -86,13 +87,15 @@ void ImputeVariables::initialize(CCDArguments args, int numberOfImputations){
 		exit(-1);
 	}
 	imputeHelper->saveOrigYVector(modelData->getYVector(), modelData->getNumberOfRows());
-	imputeHelper->saveOrigNumberOfColumns(modelData->getNumberOfColumns());
 	srand(time(NULL));
 }
 
 void ImputeVariables::impute(){
 	
 	for(int i = 0; i < nImputations; i++){
+		if(includeY){
+			includeYVector();
+		}
 		imputeHelper->sortColumns();
 		vector<int> sortedColIndices = imputeHelper->getSortedColIndices();
 		modelData->sortDataColumns(sortedColIndices);
@@ -113,14 +116,19 @@ void ImputeVariables::impute(){
 				imputeColumn(j);
 			}
 		}
-		modelData->setYVector(imputeHelper->getOrigYVector());
 		modelData->setNumberOfColumns(imputeHelper->getOrigNumberOfColumns());
-		vector<int> reverseColIndices = imputeHelper->getReverseColIndices();
-		modelData->sortDataColumns(reverseColIndices);
+		modelData->sortDataColumns(imputeHelper->getReverseColIndices());
 		imputeHelper->resortColumns();
+		
+		if(includeY){
+			excludeYVector();
+		}
+		else{
+			modelData->setYVector(imputeHelper->getOrigYVector());
+			modelData->setNumberOfColumns(imputeHelper->getOrigNumberOfColumns());
+		}
 
 		writeImputedData(i);
-
 		resetModelData();
 	}
 }
@@ -307,4 +315,54 @@ void ImputeVariables::resetModelData(){
 			modelData->removeFromColumnVector(j,missing);
 		}
 	}
+}
+
+void ImputeVariables::includeYVector(){
+	imputeHelper->includeYVector();
+
+	vector<real> y = imputeHelper->getOrigYVector();
+	modelData->setYVector(y);
+
+	formatTypeY = INDICATOR;
+	for(int i = 0; i < modelData->getNumberOfRows(); i++){
+		if(y[i] != 0.0 && y[i] != 1.0){
+			formatTypeY = DENSE;
+			break;
+		}
+	}
+	modelData->push_back(formatTypeY);
+
+	int colY = modelData->getNumberOfColumns();
+	if(formatTypeY == DENSE){
+		for(int i = 0; i < modelData->getNumberOfRows(); i++){
+			modelData->getColumn(colY-1).add_data(i,y[i]);
+		}
+	}
+	else{
+		for(int i = 0; i < modelData->getNumberOfRows(); i++){
+			if(y[i] ==  1.0){
+				modelData->getColumn(colY-1).add_data(i,1.0);
+			}
+		}
+	}
+}
+
+void ImputeVariables::excludeYVector(){
+	int colY = imputeHelper->getOrigNumberOfColumns()-1;
+	vector<real> y(modelData->getNumberOfRows(),0.0);
+	if(formatTypeY == DENSE){
+		real* y_real = modelData->getDataVector(colY);
+		for(int i = 0; i < modelData->getNumberOfRows(); i++){
+			y[i] = y_real[i];
+		}
+	}
+	else{
+		int* y_int = modelData->getCompressedColumnVector(colY);
+		for(int i = 0; i < modelData->getNumberOfEntries(colY); i++){
+			y[y_int[i]] = 1.0;
+		}
+	}
+	modelData->setYVector(y);
+	modelData->erase(colY);
+	imputeHelper->pop_back();
 }

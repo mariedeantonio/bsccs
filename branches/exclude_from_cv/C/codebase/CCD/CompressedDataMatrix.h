@@ -218,6 +218,14 @@ public:
  		}
 	}	
 
+	void erase(int column) {
+		if (allColumns[column]) {
+			delete allColumns[column];
+		}
+		allColumns.erase(allColumns.begin() + column);
+		nCols--;
+	}
+
 protected:
 
 	void push_back(int_vector* colIndices, real_vector* colData, FormatType colFormat) {
@@ -225,13 +233,6 @@ protected:
 		nCols++;
 	}
 	
-	void erase(int column) {
-		if (allColumns[column]) {
-			delete allColumns[column];
-		}
-		allColumns.erase(allColumns.begin() + column);
-	}
-
 //private:
 	int nRows;
 	int nCols;

@@ -52,8 +52,8 @@ public:
 				break;
 			case DENSE:
 				data = dataTranspose->getDataVector(i);
-				for(int j = 1; j < nRows; j++){
-					out << " " << dataTranspose->getColumn(j).getNumericalLabel() << ":" << data[j];
+				for(int j = 1; j < nCols; j++){
+					out << " " << modelData->getColumn(j).getNumericalLabel() << ":" << data[j];
 				}
 				break;
 			case SPARSE:

@@ -71,7 +71,27 @@ public:
 				vector<string> thisCovariate;
 				split(thisCovariate, strVector[0], ":");
 
-				// Parse outcome entry. Also handling missingness in Y now.
+				// Parse outcome and censoring (if any). Also handling missingness in Y now.
+				real thisY;
+				int yIndex;
+				if(thisCovariate.size() == 2){
+					yIndex = 1;
+					real thisZ = static_cast<real>(atof(thisCovariate[0].c_str()));
+					modelData->z.push_back(thisZ);
+				}
+				else{
+					yIndex = 0;
+				}
+				if(thisCovariate[yIndex] == MISSING_STRING_1 || thisCovariate[yIndex] == MISSING_STRING_2){
+					imputePolicy->push_backY(currentRow);
+					thisY = 0.0;
+				}
+				else{
+					thisY = static_cast<real>(atof(thisCovariate[yIndex].c_str()));
+				}
+				modelData->y.push_back(thisY);
+
+				/*
 				real thisY;
 				if(thisCovariate[0] == MISSING_STRING_1 || thisCovariate[0] == MISSING_STRING_2){
 					imputePolicy->push_backY(currentRow);
@@ -87,7 +107,7 @@ public:
 					real thisZ = static_cast<real>(atof(thisCovariate[1].c_str()));
 					modelData->z.push_back(thisZ);
 				}
-
+				*/
 				// Fix offs for CLR
 				modelData->offs.push_back(1);
 

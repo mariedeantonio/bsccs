@@ -20,7 +20,7 @@ public:
 		parseAllIndicatorCovariatesEntry(ss, rowInfo);
 	}
 
-protected:
+protected: 
 
 };
 

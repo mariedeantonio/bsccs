@@ -8,6 +8,8 @@
 #ifndef BBRINPUTREADER_H_
 #define BBRINPUTREADER_H_
 
+#include <numeric>
+
 #include "InputReader.h"
 #include "imputation/ImputationPolicy.h"
 #include "SparseIndexer.h"
@@ -54,7 +56,7 @@ public:
 		int_vector* nullVector = new int_vector();
 		imputePolicy->push_back(nullVector,0);
 
-		indexer.addColumn(0, DENSE);
+//		indexer.addColumn(0, DENSE);
 
 		int currentRow = 0;
 		modelData->nRows = 0;
@@ -112,7 +114,7 @@ public:
 				modelData->offs.push_back(1);
 
 				//Fill intercept
-				modelData->getColumn(0).add_data(currentRow, 1.0);
+//				modelData->getColumn(0).add_data(currentRow, 1.0);
 
 				// Parse covariates
 				for (int i = 0; i < (int)strVector.size() - 1; ++i){
@@ -166,6 +168,14 @@ public:
 		modelData->nPatients = numCases;
 		modelData->nRows = currentRow;
 		modelData->conditionId = "0";
+		
+		
+		cerr << "Total 0: " << modelData->getColumn(0).sumColumn(currentRow) << endl;
+		cerr << "Total 1: " << modelData->getColumn(1).sumColumn(currentRow) << endl;
+		cerr << "Y: " << std::accumulate(modelData->y.begin(), modelData->y.end(), 0.0) << endl;
+		cerr << "Z: " << std::accumulate(modelData->z.begin(), modelData->z.end(), 0.0) << endl;
+
+//		cerr << "Total 2: " << modelData->getColumn(2).sumColumn(currentRow) << endl;
 	}
 
 	ImputationPolicy* getImputationPolicy(){

@@ -218,6 +218,8 @@ void ModelSpecifics<BaseModel,WeightType>::computeGradientAndHessianImpl(int ind
 	IteratorType it(*(*sparseIndices)[index], N); // TODO How to create with different constructor signatures?
 
 	if (BaseModel::cumulativeGradientAndHessian) { // Compile-time switch
+		
+//		DenseIterator it(*(*sparseIndices)[index], N);
 
 		real accNumerPid  = static_cast<real>(0);
 		real accNumerPid2 = static_cast<real>(0);
@@ -228,8 +230,8 @@ void ModelSpecifics<BaseModel,WeightType>::computeGradientAndHessianImpl(int ind
 			accNumerPid2 += numerPid2[BaseModel::getGroup(hPid, k)];
 #ifdef DEBUG_COX
 			cerr << "w: " << hNWeight[k] << " " << numerPid[BaseModel::getGroup(hPid, k)] << ":" <<
-#endif
 					accNumerPid;
+#endif			
 			// Compile-time delegation
 			BaseModel::incrementGradientAndHessian(it,
 					w, // Signature-only, for iterator-type specialization
@@ -237,6 +239,12 @@ void ModelSpecifics<BaseModel,WeightType>::computeGradientAndHessianImpl(int ind
 					accDenomPid[BaseModel::getGroup(hPid, k)], hNWeight[k], it.value(), hXBeta[k], hY[k]); // When function is in-lined, compiler will only use necessary arguments
 #ifdef DEBUG_COX
 			cerr << " -> g:" << gradient << " h:" << hessian << endl;
+			if (numerPid[BaseModel::getGroup(hPid, k)] > 0 && numerPid[BaseModel::getGroup(hPid, k)] < 1e-40) {
+				
+				cerr << "hPid = " << hPid << ", k = " << k << ", index = " << BaseModel::getGroup(hPid, k) << endl;
+				
+				exit(-1);
+			}
 #endif
 		}
 	} else {
@@ -279,6 +287,9 @@ void ModelSpecifics<BaseModel,WeightType>::computeNumeratorForGradient(int index
 			if (BaseModel::hasTwoNumeratorTerms) { // Compile-time switch
 				zeroVector(numerPid2, N);
 			}
+#ifdef DEBUG_COX
+			cerr << "N = " << N << endl;
+#endif			
 			incrementNumeratorForGradientImpl<DenseIterator>(index);
 			break;
 		case SPARSE : {
@@ -308,6 +319,19 @@ void ModelSpecifics<BaseModel,WeightType>::incrementNumeratorForGradientImpl(int
 			incrementByGroup(numerPid2, hPid, k,
 					BaseModel::gradientNumerator2Contrib(it.value(), offsExpXBeta[k]));
 		}
+		
+#ifdef DEBUG_COX			
+//			if (numerPid[BaseModel::getGroup(hPid, k)] > 0 && numerPid[BaseModel::getGroup(hPid, k)] < 1e-40) {
+				cerr << "Increment" << endl;
+				cerr << "hPid = " << hPid << ", k = " << k << ", index = " << BaseModel::getGroup(hPid, k) << endl;
+				cerr << BaseModel::gradientNumeratorContrib(it.value(), offsExpXBeta[k], hXBeta[k], hY[k]) <<  " "
+				<< it.value() << " " << offsExpXBeta[k] << " " << hXBeta[k] << " " << hY[k] << endl;
+//				exit(-1);
+//			}
+#endif		
+		
+		
+		
 	}
 }
 
@@ -386,7 +410,7 @@ void ModelSpecifics<BaseModel,WeightType>::computeRemainingStatistics(void) {
 	cerr << "Done with initial denominators" << endl;
 
 	for (int k = 0; k < K; ++k) {
-		cerr << denomPid[k] << " " << accDenomPid[k] << endl;
+		cerr << denomPid[k] << " " << accDenomPid[k] << " " << numerPid[k] << endl;
 	}
 #endif
 }

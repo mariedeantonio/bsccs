@@ -13,8 +13,6 @@
 #include "InputReader.h"
 #include "SparseIndexer.h"
  
-#define UPCAST_DENSE
-
 #define MAX_ENTRIES		1000000000
 #define MISSING_STRING	"NA"
 

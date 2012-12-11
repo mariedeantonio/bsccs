@@ -32,6 +32,8 @@
 #include "io/CoxInputReader.h"
 #include "io/NewCLRInputReader.h"
 #include "io/NewSCCSInputReader.h"
+#include "io/NewCoxInputReader.h"
+#include "io/BBRInputReader.h"
 #include "CrossValidationSelector.h"
 #include "CrossValidationDriver.h"
 #include "BootstrapSelector.h"
@@ -213,6 +215,7 @@ void parseCommandLine(std::vector<std::string>& args,
 		allowedModels.push_back("clr");
 		allowedModels.push_back("lr");
 		allowedModels.push_back("ls");
+		allowedModels.push_back("pr");
 		allowedModels.push_back("cox");
 		ValuesConstraint<std::string> allowedModelValues(allowedModels);
 		ValueArg<string> modelArg("", "model", "Model specification", false, arguments.modelName, &allowedModelValues);
@@ -224,6 +227,8 @@ void parseCommandLine(std::vector<std::string>& args,
 		allowedFormats.push_back("csv");
 		allowedFormats.push_back("cc");
 		allowedFormats.push_back("cox-csv");
+		allowedFormats.push_back("new-cox");
+		allowedFormats.push_back("bbr");
 		allowedFormats.push_back("generic");
 		ValuesConstraint<std::string> allowedFormatValues(allowedFormats);
 		ValueArg<string> formatArg("", "format", "Format of data file", false, arguments.fileFormat, &allowedFormatValues);
@@ -374,8 +379,12 @@ double initializeModel(
 		reader = new CCTestInputReader();
 	} else if (arguments.fileFormat == "cox-csv") {
 		reader = new CoxInputReader();
+	} else if (arguments.fileFormat == "bbr") {
+		reader = new BBRInputReader<NoImputation>();
 	} else if (arguments.fileFormat == "generic") {
 		reader = new NewSCCSInputReader();
+	} else if (arguments.fileFormat == "new-cox") {
+		reader = new NewCoxInputReader();
 	} else {
 		cerr << "Invalid file format." << endl;
 		exit(-1);
@@ -393,6 +402,8 @@ double initializeModel(
 		*model = new ModelSpecifics<LogisticRegression<real>,real>(**modelData);
 	} else if (arguments.modelName == "ls") {
 		*model = new ModelSpecifics<LeastSquares<real>,real>(**modelData);
+	} else if (arguments.modelName == "pr") {
+		*model = new ModelSpecifics<PoissonRegression<real>,real>(**modelData);
 	} else if (arguments.modelName == "cox") {
 		*model = new ModelSpecifics<CoxProportionalHazards<real>,real>(**modelData);
 	} else {
@@ -419,11 +430,6 @@ double initializeModel(
 	if (arguments.hyperPriorSet) {
 		(*ccd)->setHyperprior(arguments.hyperprior);
 	}
-
-	// Set model from the command-line
-//	if (arguments.doLogisticRegression) {
-//		(*ccd)->setLogisticRegression(true);
-//	}
 
 	gettimeofday(&time2, NULL);
 	double sec1 = calculateSeconds(time1, time2);

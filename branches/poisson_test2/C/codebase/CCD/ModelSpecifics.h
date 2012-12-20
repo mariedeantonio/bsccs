@@ -29,6 +29,8 @@ protected:
 
 	void computeRemainingStatistics(void);
 
+	void computeFixedTermsInLogLikelihood(bool useCrossValidation);
+
 	void computeFixedTermsInGradientAndHessian(bool useCrossValidation);
 
 	double getLogLikelihood(bool useCrossValidation);
@@ -150,6 +152,8 @@ public:
 
 	const static bool hasTwoNumeratorTerms = true;
 
+	const static bool likelihoodHasFixedTerms = false;
+
 	real logLikeNumeratorContrib(int yi, real xBetai) {
 		return yi * xBetai;
 	}
@@ -243,6 +247,12 @@ public:
 	void predictEstimate(real& yi, real xBeta){
 		//do nothing for now
 	}
+
+	real logLikeFixedTermsContrib(real yi){
+		std::cerr << "Error!" << std::endl;
+		exit(-1);
+		return static_cast<real>(0);
+	}
 };
 
 template <typename WeightType>
@@ -272,6 +282,12 @@ public:
 
 	void predictEstimate(real& yi, real xBeta){
 		// do nothing for now
+	}
+
+	real logLikeFixedTermsContrib(real yi){
+		std::cerr << "Error!" << std::endl;
+		exit(-1);
+		return static_cast<real>(0);
 	}
 };
 
@@ -303,6 +319,13 @@ public:
 		real t = exp(xBeta);
 		yi = t/(t+1);
 	}
+
+	real logLikeFixedTermsContrib(real yi){
+		std::cerr << "Error!" << std::endl;
+		exit(-1);
+		return static_cast<real>(0);
+	}
+
 };
 
 template <typename WeightType>
@@ -351,6 +374,12 @@ public:
 	void predictEstimate(real& yi, real xBeta){
 		// do nothing for now
 	}
+
+	real logLikeFixedTermsContrib(real yi){
+		std::cerr << "Error!" << std::endl;
+		exit(-1);
+		return static_cast<real>(0);
+	}
 };
 
 template <typename WeightType>
@@ -363,6 +392,8 @@ public:
 	const static bool likelihoodHasDenominator = false;
 
 	const static bool hasTwoNumeratorTerms = false;
+
+	const static bool likelihoodHasFixedTerms = false;
 
 	static real getDenomNullValue () { return static_cast<real>(0.0); }
 
@@ -420,6 +451,12 @@ public:
 	void predictEstimate(real& yi, real xBeta){
 		yi = xBeta;
 	}
+
+	real logLikeFixedTermsContrib(real yi){
+		std::cerr << "Error!" << std::endl;
+		exit(-1);
+		return static_cast<real>(0);
+	}
 };
 
 template <typename WeightType>
@@ -427,6 +464,8 @@ struct PoissonRegression : public IndependentData, GLMProjection, FixedPid {
 public:
 
 	const static bool precomputeHessian = false; // XjX
+
+	const static bool likelihoodHasFixedTerms = true;
 
 	static real getDenomNullValue () { return static_cast<real>(0.0); }
 
@@ -485,6 +524,15 @@ public:
 	void predictEstimate(real& yi, real xBeta){
 		yi = exp(xBeta);
 	}
+
+	int factorial(int n){
+		return (n == 1 || n == 0) ? 1 : factorial(n - 1) * n;
+	}
+
+	real logLikeFixedTermsContrib(real yi){
+		return -log((real)factorial((int)yi));
+	}
+
 };
 
 #include "ModelSpecifics.hpp"

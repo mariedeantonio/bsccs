@@ -525,12 +525,11 @@ public:
 		yi = exp(xBeta);
 	}
 
-	int factorial(int n){
-		return (n == 1 || n == 0) ? 1 : factorial(n - 1) * n;
-	}
-
 	real logLikeFixedTermsContrib(real yi){
-		return -log((real)factorial((int)yi));
+		real logLikeFixedTerm = 0.0;
+		for(int i = 2; i <= (int)yi; i++)
+			logLikeFixedTerm += -log((real)i);
+		return logLikeFixedTerm;
 	}
 
 };

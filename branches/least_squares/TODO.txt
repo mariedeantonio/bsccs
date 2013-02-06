@@ -1,7 +1,0 @@
-New covariates:
-
-- Sparse:
-    * Real-valued
-    * Indicators
-    
-- Dense

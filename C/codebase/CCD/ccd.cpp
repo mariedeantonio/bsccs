@@ -16,112 +16,44 @@
 
 #include <iostream>
 #include <time.h>
-#ifndef _WIN32
-	#include <sys/time.h>
-#endif
+#include <sys/time.h>
 
 #include <math.h>
 
 #include "ccd.h"
 #include "CyclicCoordinateDescent.h"
-#include "ModelData.h"
-#include "io/InputReader.h"
-#include "io/CLRInputReader.h"
-#include "io/RTestInputReader.h"
-#include "io/CCTestInputReader.h"
-#include "io/CoxInputReader.h"
-#include "io/NewCLRInputReader.h"
-#include "io/NewSCCSInputReader.h"
-#include "io/NewCoxInputReader.h"
-#include "io/NewGenericInputReader.h"
-#include "io/BBRInputReader.h"
-#include "io/OutputWriter.h"
+#include "InputReader.h"
+#include "CLRInputReader.h"
+#include "RTestInputReader.h"
+#include "CCTestInputReader.h"
 #include "CrossValidationSelector.h"
 #include "CrossValidationDriver.h"
 #include "BootstrapSelector.h"
-#include "ProportionSelector.h"
 #include "BootstrapDriver.h"
-#include "ModelSpecifics.h"
+#include "SparseRowVector.h"
+#include "MCMCDriver.h"
 
 #include "tclap/CmdLine.h"
 
 //#include <R.h>
 
+#define CUDA_TRS
+//#define Debug_TRS
+
 #ifdef CUDA
 	#include "GPUCyclicCoordinateDescent.h"
-//	#include "BetterGPU.h"
+	#include "BetterGPU.h"
 #endif
+
 
 
 #define NEW
 
 using namespace TCLAP;
 using namespace std;
+//using namespace bsccs;
 
-//Sushil:Implementing gettimeofday functionality for windows.
-#ifdef _WIN32
-	#if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)
-		#define DELTA_EPOCH_IN_MICROSECS  11644473600000000Ui64
-	#else
-		#define DELTA_EPOCH_IN_MICROSECS  11644473600000000ULL
-	#endif
-	struct timezone
-	{
-		int  tz_minuteswest; /* minutes W of Greenwich */
-		int  tz_dsttime;     /* type of dst correction */
-	};
-
-	// Definition of a gettimeofday function
-
-	int gettimeofday(struct timeval *tv, struct timezone *tz)
-	{
-		// Define a structure to receive the current Windows filetime
-		FILETIME ft;
-
-		// Initialize the present time to 0 and the timezone to UTC
-		unsigned __int64 tmpres = 0;
-		static int tzflag = 0;
-
-		if (NULL != tv)
-		{
-			GetSystemTimeAsFileTime(&ft);
-
-			// The GetSystemTimeAsFileTime returns the number of 100 nanosecond
-			// intervals since Jan 1, 1601 in a structure. Copy the high bits to
-			// the 64 bit tmpres, shift it left by 32 then or in the low 32 bits.
-			tmpres |= ft.dwHighDateTime;
-			tmpres <<= 32;
-			tmpres |= ft.dwLowDateTime;
-
-			// Convert to microseconds by dividing by 10
-			tmpres /= 10;
-
-			// The Unix epoch starts on Jan 1 1970.  Need to subtract the difference
-			// in seconds from Jan 1 1601.
-			tmpres -= DELTA_EPOCH_IN_MICROSECS;
-
-			// Finally change microseconds to seconds and place in the seconds value.
-			// The modulus picks up the microseconds.
-			tv->tv_sec = (long)(tmpres / 1000000UL);
-			tv->tv_usec = (long)(tmpres % 1000000UL);
-		}
-
-		if (NULL != tz)
-		{
-			if (!tzflag)
-			{
-				_tzset();
-				tzflag++;
-			}
-
-			// Adjust for the timezone west of Greenwich
-			tz->tz_minuteswest = _timezone / 60;
-			tz->tz_dsttime = _daylight;
-		}
-
-		return 0;
-	}
-#endif
+namespace bsccs {
 
 double calculateSeconds(const timeval &time1, const timeval &time2) {
 	return time2.tv_sec - time1.tv_sec +
@@ -138,12 +70,12 @@ void parseCommandLine(int argc, char* argv[],
 
 void setDefaultArguments(CCDArguments &arguments) {
 	arguments.useGPU = false;
-	arguments.maxIterations = 1000;
+	arguments.maxIterations = 100;
 	arguments.inFileName = "default_in";
 	arguments.outFileName = "default_out";
 	arguments.hyperPriorSet = false;
 	arguments.hyperprior = 1.0;
-	arguments.tolerance = 1E-6; //5E-4;
+	arguments.tolerance = 5E-4;
 	arguments.seed = 123;
 	arguments.doCrossValidation = false;
 	arguments.lowerLimit = 0.01;
@@ -154,13 +86,11 @@ void setDefaultArguments(CCDArguments &arguments) {
 	arguments.doBootstrap = false;
 	arguments.replicates = 100;
 	arguments.reportRawEstimates = false;
-	arguments.modelName = "sccs";
+	arguments.doLogisticRegression = false;
 	arguments.fileFormat = "sccs";
-	arguments.outputFormat = "estimates";
 	arguments.useNormalPrior = false;
-	arguments.convergenceType = GRADIENT;
-	arguments.convergenceTypeString = "gradient";
-	arguments.doPartial = false;
+	arguments.convergenceType = ZHANG_OLES;
+	arguments.betaAmount = 1.0;
 }
 
 
@@ -178,69 +108,48 @@ void parseCommandLine(std::vector<std::string>& args,
 		UnlabeledValueArg<string> outFileArg("outFileName","Output file name", true, arguments.outFileName, "outFileName");
 
 		// Prior arguments
-		ValueArg<double> hyperPriorArg("v", "variance", "Hyperprior variance", false, arguments.hyperprior, "real");
+		ValueArg<double> hyperPriorArg("v", "variance", "Hyperprior variance", false, arguments.hyperprior, "bsccs::real");
 		SwitchArg normalPriorArg("n", "normalPrior", "Use normal prior, default is laplace", arguments.useNormalPrior);
 
 		// Convergence criterion arguments
-		ValueArg<double> toleranceArg("t", "tolerance", "Convergence criterion tolerance", false, arguments.tolerance, "real");
-//		SwitchArg zhangOlesConvergenceArg("z", "zhangOles", "Use Zhange-Oles convergence criterion, default is true", true);
-		std::vector<std::string> allowedConvergence;
-		allowedConvergence.push_back("gradient");
-		allowedConvergence.push_back("ZhangOles");
-		allowedConvergence.push_back("Lange");
-		allowedConvergence.push_back("Mittal");
-		ValuesConstraint<std::string> allowedConvergenceValues(allowedConvergence);
-		ValueArg<string> convergenceArg("", "convergence", "Convergence criterion", false, arguments.convergenceTypeString, &allowedConvergenceValues);
-
+		ValueArg<double> toleranceArg("t", "tolerance", "Convergence criterion tolerance", false, arguments.tolerance, "bsccs::real");
+		SwitchArg zhangOlesConvergenceArg("z", "zhangOles", "Use Zhange-Oles convergence criterion, default is true", true);
 		ValueArg<long> seedArg("s", "seed", "Random number generator seed", false, arguments.seed, "long");
 
 		// Cross-validation arguments
 		SwitchArg doCVArg("c", "cv", "Perform cross-validation selection of hyperprior variance", arguments.doCrossValidation);
-		ValueArg<double> lowerCVArg("l", "lower", "Lower limit for cross-validation search", false, arguments.lowerLimit, "real");
-		ValueArg<double> upperCVArg("u", "upper", "Upper limit for cross-validation search", false, arguments.upperLimit, "real");
+		ValueArg<double> lowerCVArg("l", "lower", "Lower limit for cross-validation search", false, arguments.lowerLimit, "bsccs::real");
+		ValueArg<double> upperCVArg("u", "upper", "Upper limit for cross-validation search", false, arguments.upperLimit, "bsccs::real");
 		ValueArg<int> foldCVArg("f", "fold", "Fold level for cross-validation", false, arguments.fold, "int");
 		ValueArg<int> gridCVArg("", "gridSize", "Uniform grid size for cross-validation search", false, arguments.gridSteps, "int");
 		ValueArg<int> foldToComputeCVArg("", "computeFold", "Number of fold to iterate, default is 'fold' value", false, 10, "int");
 		ValueArg<string> outFile2Arg("", "cvFileName", "Cross-validation output file name", false, arguments.cvFileName, "cvFileName");
+
+
+		//Test MCMC values
+		ValueArg<double> betaAmountArg("q", "betaAmount", "beta amount in MCMC", false, arguments.betaAmount, "bsccs::real");
+		ValueArg<double> sigmaAmountArg("w", "sigmaAmount", "sigma amount in MCMC", false, arguments.sigmaAmount, "bsccs::real");
+		ValueArg<string> MCMCOutFileArg("m", "MCMCFileName", "MCMC output file name", false, "MCMC.txt", "MCMCFileName");
+
+
 
 		// Bootstrap arguments
 		SwitchArg doBootstrapArg("b", "bs", "Perform bootstrap estimation", arguments.doBootstrap);
 //		ValueArg<string> bsOutFileArg("", "bsFileName", "Bootstrap output file name", false, "bs.txt", "bsFileName");
 		ValueArg<int> replicatesArg("r", "replicates", "Number of bootstrap replicates", false, arguments.replicates, "int");
 		SwitchArg reportRawEstimatesArg("","raw", "Report the raw bootstrap estimates", arguments.reportRawEstimates);
-		ValueArg<int> partialArg("", "partial", "Number of rows to use in partial estimation", false, -1, "int");
 
 		// Model arguments
-//		SwitchArg doLogisticRegressionArg("", "logistic", "Use ordinary logistic regression", arguments.doLogisticRegression);
-		std::vector<std::string> allowedModels;
-		allowedModels.push_back("sccs");
-		allowedModels.push_back("clr");
-		allowedModels.push_back("lr");
-		allowedModels.push_back("ls");
-		allowedModels.push_back("pr");
-		allowedModels.push_back("cox");
-		ValuesConstraint<std::string> allowedModelValues(allowedModels);
-		ValueArg<string> modelArg("", "model", "Model specification", false, arguments.modelName, &allowedModelValues);
+		SwitchArg doLogisticRegressionArg("", "logistic", "Use ordinary logistic regression", arguments.doLogisticRegression);
 
 		// Format arguments
-		std::vector<std::string> allowedFormats;
-		allowedFormats.push_back("sccs");
-		allowedFormats.push_back("clr");
-		allowedFormats.push_back("csv");
-		allowedFormats.push_back("cc");
-		allowedFormats.push_back("cox-csv");
-		allowedFormats.push_back("new-cox");
-		allowedFormats.push_back("bbr");
-		allowedFormats.push_back("generic");
-		ValuesConstraint<std::string> allowedFormatValues(allowedFormats);
-		ValueArg<string> formatArg("", "format", "Format of data file", false, arguments.fileFormat, &allowedFormatValues);
-
-		// Output format arguments
-		std::vector<std::string> allowedOutputFormats;
-		allowedOutputFormats.push_back("estimates");
-		allowedOutputFormats.push_back("prediction");
-		ValuesConstraint<std::string> allowedOutputFormatValues(allowedOutputFormats);
-		ValueArg<string> outputFormatArg("", "outputFormat", "Format of the output file", false, arguments.outputFormat, &allowedOutputFormatValues);
+		std::vector<std::string> allowed;
+		allowed.push_back("sccs");
+		allowed.push_back("clr");
+		allowed.push_back("csv");
+		allowed.push_back("cc");
+		ValuesConstraint<std::string> allowedValues(allowed);
+		ValueArg<string> formatArg("", "format", "Format of data file", false, arguments.fileFormat, &allowedValues);
 
 		cmd.add(gpuArg);
 //		cmd.add(betterGPUArg);
@@ -248,12 +157,14 @@ void parseCommandLine(std::vector<std::string>& args,
 		cmd.add(maxIterationsArg);
 		cmd.add(hyperPriorArg);
 		cmd.add(normalPriorArg);
-//		cmd.add(zhangOlesConvergenceArg);
-		cmd.add(convergenceArg);
+		cmd.add(zhangOlesConvergenceArg);
 		cmd.add(seedArg);
-		cmd.add(modelArg);
 		cmd.add(formatArg);
-		cmd.add(outputFormatArg);
+
+		//for MCMC tshaddox
+		cmd.add(betaAmountArg);
+		cmd.add(sigmaAmountArg);
+		cmd.add(MCMCOutFileArg);
 
 		cmd.add(doCVArg);
 		cmd.add(lowerCVArg);
@@ -266,9 +177,8 @@ void parseCommandLine(std::vector<std::string>& args,
 		cmd.add(doBootstrapArg);
 //		cmd.add(bsOutFileArg);
 		cmd.add(replicatesArg);
-		cmd.add(partialArg);
 		cmd.add(reportRawEstimatesArg);
-//		cmd.add(doLogisticRegressionArg);
+		cmd.add(doLogisticRegressionArg);
 
 		cmd.add(inFileArg);
 		cmd.add(outFileArg);
@@ -282,6 +192,10 @@ void parseCommandLine(std::vector<std::string>& args,
 		}
 //		arguments.useBetterGPU = betterGPUArg.isSet();
 
+		arguments.betaAmount = betaAmountArg.getValue();
+		arguments.sigmaAmount = sigmaAmountArg.getValue();
+		arguments.MCMCFileName = MCMCOutFileArg.getValue();
+
 		arguments.inFileName = inFileArg.getValue();
 		arguments.outFileName = outFileArg.getValue();
 		arguments.tolerance = toleranceArg.getValue();
@@ -290,10 +204,7 @@ void parseCommandLine(std::vector<std::string>& args,
 		arguments.useNormalPrior = normalPriorArg.getValue();
 		arguments.seed = seedArg.getValue();
 
-		arguments.modelName = modelArg.getValue();
 		arguments.fileFormat = formatArg.getValue();
-		arguments.outputFormat = outputFormatArg.getValue();
-		arguments.convergenceTypeString = convergenceArg.getValue();
 
 		if (hyperPriorArg.isSet()) {
 			arguments.hyperPriorSet = true;
@@ -301,22 +212,10 @@ void parseCommandLine(std::vector<std::string>& args,
 			arguments.hyperPriorSet = false;
 		}
 
-//		if (zhangOlesConvergenceArg.isSet()) {
-//			arguments.convergenceType = ZHANG_OLES;
-//		} else {
-//			arguments.convergenceType = LANGE;
-//		}
-		if (arguments.convergenceTypeString == "ZhangOles") {
+		if (zhangOlesConvergenceArg.isSet()) {
 			arguments.convergenceType = ZHANG_OLES;
-		} else if (arguments.convergenceTypeString == "Lange") {
-			arguments.convergenceType = LANGE;
-		} else if (arguments.convergenceTypeString == "Mittal") {
-			arguments.convergenceType = MITTAL;
-		} else if (arguments.convergenceTypeString == "gradient") {
-			arguments.convergenceType = GRADIENT;
 		} else {
-			cerr << "Unknown convergence type: " << convergenceArg.getValue() << " " << arguments.convergenceTypeString << endl;
-			exit(-1);
+			arguments.convergenceType = LANGE;
 		}
 
 		// Cross-validation
@@ -346,13 +245,7 @@ void parseCommandLine(std::vector<std::string>& args,
 				arguments.reportRawEstimates = false;
 			}
 		}
-
-		if (partialArg.getValue() != -1) {
-			arguments.doPartial = true;
-			arguments.replicates = partialArg.getValue();
-		}
-
-//		arguments.doLogisticRegression = doLogisticRegressionArg.isSet();
+		arguments.doLogisticRegression = doLogisticRegressionArg.isSet();
 	} catch (ArgException &e) {
 		cerr << "Error: " << e.error() << " for argument " << e.argId() << endl;
 		exit(-1);
@@ -360,10 +253,8 @@ void parseCommandLine(std::vector<std::string>& args,
 }
 
 double initializeModel(
-		ModelData** modelData,
+		InputReader** reader,
 		CyclicCoordinateDescent** ccd,
-		AbstractModelSpecifics** model,
-//		ModelSpecifics<DefaultModel>** model,
 		CCDArguments &arguments) {
 	
 	cout << "Running CCD (" <<
@@ -377,61 +268,30 @@ double initializeModel(
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 
-	InputReader* reader;
-
 	if (arguments.fileFormat == "sccs") {
-		reader = new SCCSInputReader();
+		*reader = new SCCSInputReader();
 	} else if (arguments.fileFormat == "clr") {
-//		reader = new CLRInputReader();
-		reader = new NewCLRInputReader();
+		*reader = new CLRInputReader();
 	} else if (arguments.fileFormat == "csv") {
-		reader = new RTestInputReader();
+		*reader = new RTestInputReader();
 	} else if (arguments.fileFormat == "cc") {
-		reader = new CCTestInputReader();
-	} else if (arguments.fileFormat == "cox-csv") {
-		reader = new CoxInputReader();
-	} else if (arguments.fileFormat == "bbr") {
-		reader = new BBRInputReader<NoImputation>();
-	} else if (arguments.fileFormat == "generic") {
-//		reader = new NewSCCSInputReader();
-		reader = new NewGenericInputReader();
-	} else if (arguments.fileFormat == "new-cox") {
-		reader = new NewCoxInputReader();
+		*reader = new CCTestInputReader();
 	} else {
 		cerr << "Invalid file format." << endl;
 		exit(-1);
 	}
+	(*reader)->readFile(arguments.inFileName.c_str()); // TODO Check for error
 
-	reader->readFile(arguments.inFileName.c_str()); // TODO Check for error
-	// delete reader;
-	*modelData = reader->getModelData();
 
-	if (arguments.modelName == "sccs") {
-		*model = new ModelSpecifics<SelfControlledCaseSeries<real>,real>(**modelData);
-	} else if (arguments.modelName == "clr") {
-		*model = new ModelSpecifics<ConditionalLogisticRegression<real>,real>(**modelData);
-	} else if (arguments.modelName == "lr") {
-		*model = new ModelSpecifics<LogisticRegression<real>,real>(**modelData);
-	} else if (arguments.modelName == "ls") {
-		*model = new ModelSpecifics<LeastSquares<real>,real>(**modelData);
-	} else if (arguments.modelName == "pr") {
-		*model = new ModelSpecifics<PoissonRegression<real>,real>(**modelData);
-	} else if (arguments.modelName == "cox") {
-		*model = new ModelSpecifics<CoxProportionalHazards<real>,real>(**modelData);
-	} else {
-		cerr << "Invalid model type." << endl;
-		exit(-1);
-	}
-
-#ifdef CUDA
+#ifdef CUDA_TRS
 	if (arguments.useGPU) {
-		*ccd = new GPUCyclicCoordinateDescent(arguments.deviceNumber, *reader, **model);
+		*ccd = new GPUCyclicCoordinateDescent(arguments.deviceNumber, *reader);
 	} else {
 #endif
 
-	*ccd = new CyclicCoordinateDescent(*modelData /* TODO Change to ref */, **model);
+	*ccd = new CyclicCoordinateDescent(*reader);
 
-#ifdef CUDA
+#ifdef CUDA_TRS
 	}
 #endif
 
@@ -443,6 +303,11 @@ double initializeModel(
 		(*ccd)->setHyperprior(arguments.hyperprior);
 	}
 
+	// Set model from the command-line
+	if (arguments.doLogisticRegression) {
+		(*ccd)->setLogisticRegression(true);
+	}
+
 	gettimeofday(&time2, NULL);
 	double sec1 = calculateSeconds(time1, time2);
 
@@ -450,19 +315,6 @@ double initializeModel(
 	
 	return sec1;
 }
-
-double predictModel(CyclicCoordinateDescent *ccd, ModelData *modelData, CCDArguments &arguments) {
-
-	struct timeval time1, time2;
-	gettimeofday(&time1, NULL);
-
-	bsccs::PredictionOutputWriter predictor(*ccd, *modelData);
-	predictor.writeFile(arguments.outFileName.c_str());
-
-	gettimeofday(&time2, NULL);
-	return calculateSeconds(time1, time2);
-}
-
 
 double fitModel(CyclicCoordinateDescent *ccd, CCDArguments &arguments) {
 #ifndef MY_RCPP_FLAG
@@ -476,20 +328,24 @@ double fitModel(CyclicCoordinateDescent *ccd, CCDArguments &arguments) {
 
 	gettimeofday(&time2, NULL);
 
+#ifndef MY_RCPP_FLAG
+	ccd->logResults(arguments.outFileName.c_str());
+#endif
+
 	return calculateSeconds(time1, time2);
 }
 
 double runBoostrap(
 		CyclicCoordinateDescent *ccd,
-		ModelData *modelData,
+		InputReader *reader,
 		CCDArguments &arguments,
-		std::vector<real>& savedBeta) {
+		std::vector<bsccs::real>& savedBeta) {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 
-	BootstrapSelector selector(arguments.replicates, modelData->getPidVectorSTL(),
+	BootstrapSelector selector(arguments.replicates, reader->getPidVectorSTL(),
 			SUBJECT, arguments.seed);
-	BootstrapDriver driver(arguments.replicates, modelData);
+	BootstrapDriver driver(arguments.replicates, reader);
 
 	driver.drive(*ccd, selector, arguments);
 	gettimeofday(&time2, NULL);
@@ -498,12 +354,12 @@ double runBoostrap(
 	return calculateSeconds(time1, time2);
 }
 
-double runCrossValidation(CyclicCoordinateDescent *ccd, ModelData *modelData,
+double runCrossValidation(CyclicCoordinateDescent *ccd, InputReader *reader,
 		CCDArguments &arguments) {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 
-	CrossValidationSelector selector(arguments.fold, modelData->getPidVectorSTL(),
+	CrossValidationSelector selector(arguments.fold, reader->getPidVectorSTL(),
 			SUBJECT, arguments.seed);
 	CrossValidationDriver driver(arguments.gridSteps, arguments.lowerLimit, arguments.upperLimit);
 
@@ -522,6 +378,8 @@ double runCrossValidation(CyclicCoordinateDescent *ccd, ModelData *modelData,
 
 	return calculateSeconds(time1, time2);
 }
+
+} // namespace bsccs
 
 #if 0
 
@@ -565,65 +423,53 @@ int main(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]) {
 
+	using namespace bsccs;
+
 	CyclicCoordinateDescent* ccd = NULL;
-	AbstractModelSpecifics* model = NULL;
-	ModelData* modelData = NULL;
+	InputReader* reader = NULL;
 	CCDArguments arguments;
+
 
 	parseCommandLine(argc, argv, arguments);
 
-	double timeInitialize = initializeModel(&modelData, &ccd, &model, arguments);
+	double timeInitialize = initializeModel(&reader, &ccd, arguments);
 
+#ifdef Debug_TRS
+	cout << " /t initialized Model" << endl;
+#endif
 	double timeUpdate;
 	if (arguments.doCrossValidation) {
-		timeUpdate = runCrossValidation(ccd, modelData, arguments);
+		timeUpdate = runCrossValidation(ccd, reader, arguments);
 	} else {
-		if (arguments.doPartial) {
-			ProportionSelector selector(arguments.replicates, modelData->getPidVectorSTL(),
-					SUBJECT, arguments.seed);
-			std::vector<real> weights;
-			selector.getWeights(0, weights);
-			ccd->setWeights(&weights[0]);
-		}
 		timeUpdate = fitModel(ccd, arguments);
-	}
-
-	double timePredict;
-	bool doPrediction = false;
-	if (arguments.outputFormat == "prediction") {
-		doPrediction = true;
-		timePredict = predictModel(ccd, modelData, arguments);
-	} else {
-#ifndef MY_RCPP_FLAG
-		// TODO Make into OutputWriter
-		ccd->logResults(arguments.outFileName.c_str());
-#endif
 	}
 
 	if (arguments.doBootstrap) {
 		// Save parameter point-estimates
-		std::vector<real> savedBeta;
+		std::vector<bsccs::real> savedBeta;
 		for (int j = 0; j < ccd->getBetaSize(); ++j) {
 			savedBeta.push_back(ccd->getBeta(j));
 		}
-		timeUpdate += runBoostrap(ccd, modelData, arguments, savedBeta);
+		timeUpdate += runBoostrap(ccd, reader, arguments, savedBeta);
 	}
 		
 	cout << endl;
-	cout << "Load    duration: " << scientific << timeInitialize << endl;
-	cout << "Update  duration: " << scientific << timeUpdate << endl;
-	if (doPrediction) {
-		cout << "Predict duration: " << scientific << timePredict << endl;
-	}
+	cout << "Load   duration: " << scientific << timeInitialize << endl;
+	cout << "Update duration: " << scientific << timeUpdate << endl;
 	
+
+	MCMCDriver testMCMCDriver(reader, arguments.MCMCFileName);
+
+	cout << "betaAmount = " << arguments.betaAmount << endl;
+	testMCMCDriver.drive(*ccd, arguments.betaAmount, arguments.seed);
+
 	if (ccd)
 		delete ccd;
-	if (model)
-		delete model;
-	if (modelData)
-		delete modelData;
+	if (reader)
+		delete reader;
 
     return 0;
 }
 
 #endif
+

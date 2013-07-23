@@ -11,15 +11,15 @@
  */
 
 // Iterator for a sparse of indicators column
+namespace bsccs {
 class IndicatorIterator {
   public:
 
-	typedef real Scalar;
+	typedef bsccs::real Scalar;
 	typedef int Index;
 
 //	static const bool isIndicator = true;
 	enum  { isIndicator = true };
-	enum  { isSparse = true };
 
 	inline IndicatorIterator(const CompressedDataMatrix& mat, Index column)
 	  : mIndices(mat.getCompressedColumnVector(column)),
@@ -53,12 +53,11 @@ class IndicatorIterator {
 class SparseIterator {
   public:
 
-	typedef real Scalar;
+	typedef bsccs::real Scalar;
 	typedef int Index;
 
 //	static const bool isIndicator = false;
 	enum  { isIndicator = false };
-	enum  { isSparse = true };
 
 	inline SparseIterator(const CompressedDataMatrix& mat, Index column)
 	  : mValues(mat.getDataVector(column)), mIndices(mat.getCompressedColumnVector(column)),
@@ -115,17 +114,11 @@ protected:
 class DenseIterator {
   public:
 
-	typedef real Scalar;
+	typedef bsccs::real Scalar;
 	typedef int Index;
 
 //	static const bool isIndicator = false;
 	enum  { isIndicator = false };
-	enum  { isSparse = false };
-	
-	inline DenseIterator(const int& start, const int& end)
-		: mId(start), mEnd(end) {
-		
-	}
 
 	inline DenseIterator(const CompressedDataMatrix& mat, Index column)
 	  : mValues(mat.getDataVector(column)),
@@ -152,80 +145,11 @@ class DenseIterator {
     const Index mEnd;
 };
 
-// Iterator for an intercept column
-class InterceptIterator {
-  public:
-
-	typedef real Scalar;
-	typedef int Index;
-
-	enum  { isIndicator = true };
-	enum  { isSparse = false };
-
-	inline InterceptIterator(const int& start, const int& end)
-		: mId(start), mEnd(end) {
-		// Do nothing
-	}
-
-	inline InterceptIterator(const CompressedDataMatrix& mat, Index column)
-	  : mId(0), mEnd(mat.getNumberOfRows()){
-		// Do nothing
-	}
-
-	inline InterceptIterator(const std::vector<int>& vec, Index end)
-	: mId(0), mEnd(end) {
-		// Do nothing
-	}
-
-    inline InterceptIterator& operator++() { ++mId; return *this; }
-
-    inline const int value() const { return 1; }
-    inline int valueRef() { return 1; }
-    // TODO Confirm optimization of (real) * value() => (real)
-
-    inline Index index() const { return mId; }
-    inline operator bool() const { return (mId < mEnd); }
-
-  protected:
-    Index mId;
-    const Index mEnd;
-};
-
-// Iterator for a dense view of an arbitrary column
-class DenseViewIterator {
-  public:
-
-	typedef real Scalar;
-	typedef int Index;
-
-	enum  { isIndicator = false };
-	enum  { isSparse = false };
-	
-	inline DenseViewIterator(const CompressedDataMatrix& mat, Index column)
-	  : mValues(mat.getDataVector(column)),
-	    mId(0), mEnd(mat.getNumberOfRows()){
-		// Do nothing
-	}
-
-    inline DenseViewIterator& operator++() { ++mId; return *this; }
-
-    inline const Scalar& value() const { return mValues[mId]; }
-    inline Scalar& valueRef() { return const_cast<Scalar&>(mValues[mId]); }
-
-    inline Index index() const { return mId; }
-    inline operator bool() const { return (mId < mEnd); }
-
-  protected:
-    const Scalar* mValues;
-    Index mId;
-    const Index mEnd;
-};
-
 // Generic iterator for a run-time format determined column
 class GenericIterator {
   public:
 
-	typedef real Scalar;
+	typedef bsccs::real Scalar;
 	typedef int Index;
 
 	inline GenericIterator(const CompressedDataMatrix& mat, Index column)
@@ -243,7 +167,7 @@ class GenericIterator {
 			}
 			mIndices = mat.getCompressedColumnVector(column);
 			mEnd = mat.getNumberOfEntries(column);
-		}		
+		}
 	}
 
     inline GenericIterator& operator++() { ++mId; return *this; }
@@ -274,5 +198,5 @@ class GenericIterator {
     Index mEnd;
 };
 
-
+}
 #endif // ITERATORS_H

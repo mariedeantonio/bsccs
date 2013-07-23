@@ -10,6 +10,8 @@
 
 #include <vector>
 
+namespace bsccs {
+
 #ifdef DOUBLE_PRECISION
 	typedef double real;
 #else
@@ -32,9 +34,9 @@ public:
 
 	virtual void permute() = 0; // pure virtual
 
-	virtual void getWeights(int batch, std::vector<real>& weights) = 0; // pure virtual
+	virtual void getWeights(int batch, std::vector<bsccs::real>& weights) = 0; // pure virtual
 
-	virtual void getComplement(std::vector<real>& weights) = 0; // pure virtual
+	virtual void getComplement(std::vector<bsccs::real>& weights) = 0; // pure virtual
 
 protected:
 	std::vector<int>* ids;
@@ -44,5 +46,5 @@ protected:
 	int N;
 	bool deterministic;
 };
-
+}
 #endif /* ABSTRACTSELECTOR_H_ */

@@ -17,6 +17,8 @@
 #include "GPU/GPUImplHelper.h"
 #include "GPU/GPUInterface.h"
 
+//#define GPU_DEBUG_FLOW
+
 #define SAFE_CUDA(call) { \
                             CUresult error = call; \
                             if(error != CUDA_SUCCESS) { \
@@ -397,9 +399,7 @@ void GPUInterface::FreeMemory(GPUPtr dPtr) {
     fprintf(stderr, "\t\t\tEntering GPUInterface::FreeMemory\n");
 #endif
     
-    if (dPtr) {
-    	SAFE_CUPP(cuMemFree(dPtr));
-    }
+    SAFE_CUPP(cuMemFree(dPtr));
 
 #ifdef GPU_DEBUG_FLOW
     fprintf(stderr,"\t\t\tLeaving  GPUInterface::FreeMemory\n");

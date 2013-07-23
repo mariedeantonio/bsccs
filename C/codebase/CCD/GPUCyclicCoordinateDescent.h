@@ -16,6 +16,8 @@
 #define NO_BETA
 #define GPU_SPARSE_PRODUCT
 
+namespace bsccs {
+
 #ifdef DOUBLE_PRECISION
 	typedef double gpu_real;
 #else
@@ -25,18 +27,17 @@
 
 class GPUCyclicCoordinateDescent: public CyclicCoordinateDescent {
 public:
-	GPUCyclicCoordinateDescent(int deviceNumber, InputReader *reader,
-			AbstractModelSpecifics& specifics);
+	GPUCyclicCoordinateDescent(int deviceNumber, InputReader *reader);
 	virtual ~GPUCyclicCoordinateDescent();
 
-	virtual double getObjectiveFunction(int convergenceType);
-
-	virtual bool initializeDevice(int deviceNumber);
+	virtual double getObjectiveFunction(void);
 
 protected:
 	
 	using CyclicCoordinateDescent::hXI;
 	
+	virtual void setBeta(const std::vector<double>& beta);
+
 	virtual void resetBeta(void);
 
 	virtual void computeNEvents(void);
@@ -66,10 +67,10 @@ private:
 	GPUPtr* dXI;
 	GPUPtr dXColumnLength;
 	GPUPtr dOffs;
-//	GPUPtr dEta;
+	GPUPtr dEta;
 	GPUPtr dNEvents;
-//	GPUPtr dPid;
-//	GPUPtr dXFullRowOffsets;
+	GPUPtr dPid;
+	GPUPtr dXFullRowOffsets;
 #ifndef NO_BETA
 	GPUPtr dBeta;
 #endif
@@ -79,14 +80,14 @@ private:
 	GPUPtr dDenomPid;
 	GPUPtr dNumerPid;
 	GPUPtr dT1;
-//	GPUPtr dXOffsExpXBeta;
+	GPUPtr dXOffsExpXBeta;
 
 	GPUPtr dGradient;
 	GPUPtr dHessian;
 	GPUPtr dReducedGradientHessian;
 
-	real* hGradient;
-	real* hHessian;
+	bsccs::real* hGradient;
+	bsccs::real* hHessian;
 
 	GPUPtr* dXColumnRowIndicators;
 
@@ -95,7 +96,7 @@ private:
 	int maxNISize;
 	int avgNISize;
 #endif
-//	int* hColumnRowLength;
+	int* hColumnRowLength;
 
 	GPUPtr dTmpCooRows;
 	GPUPtr dTmpCooVals;
@@ -104,5 +105,5 @@ private:
 	int cacheSizeGH;
 	int alignedGHCacheSize;
 };
-
+}
 #endif /* GPUCYCLICCOORDINATEDESCENT_H_ */

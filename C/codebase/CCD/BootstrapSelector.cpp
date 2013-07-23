@@ -10,28 +10,16 @@
 
 #include "BootstrapSelector.h"
 
+namespace bsccs {
+
 BootstrapSelector::BootstrapSelector(
 		int replicates,
 		std::vector<int>* inIds,
 		SelectorType inType,
-		long inSeed,
-		std::vector<real>* wtsExclude) : AbstractSelector(inIds, inType, inSeed) {
+		long inSeed) : AbstractSelector(inIds, inType, inSeed) {
 
 	std::cout << "Performing bootstrap estimation with " << replicates
 		<< " replicates [seed = " << seed << "]" << std::endl;
-
-	if(wtsExclude){
-		for(int i = 0; i < wtsExclude->size(); i++){
-			if(wtsExclude->at(i) == 0){
-				indicesIncluded.push_back(i);
-			}
-		}
-	}
-	else{
-		for(int i = 0; i < N; i++){
-			indicesIncluded.push_back(i);
-		}
-	}
 
 	permute();
 
@@ -45,12 +33,9 @@ BootstrapSelector::~BootstrapSelector() {
 void BootstrapSelector::permute() {
 	selectedSet.clear();
 
-	// Get non-excluded indices
-	int N_new = indicesIncluded.size();
 	if (type == SUBJECT) {
-		for (int i = 0; i < N_new; i++) {
-			int ind = rand() / (RAND_MAX / N_new + 1);
-			int draw = indicesIncluded[ind];
+		for (int i = 0; i < N; i++) {
+			int draw = rand() / (RAND_MAX / N + 1);
 			selectedSet.insert(draw);
 		}
 	} else {
@@ -68,7 +53,7 @@ void BootstrapSelector::permute() {
 //	exit(0);
 }
 
-void BootstrapSelector::getWeights(int batch, std::vector<real>& weights) {
+void BootstrapSelector::getWeights(int batch, std::vector<bsccs::real>& weights) {
 	if (weights.size() != K) {
 		weights.resize(K);
 	}
@@ -81,7 +66,7 @@ void BootstrapSelector::getWeights(int batch, std::vector<real>& weights) {
 	if (type == SUBJECT) {
 		for (int k = 0; k < K; k++) {
 			int count = selectedSet.count(ids->at(k));
-			weights[k] = static_cast<real>(count);
+			weights[k] = static_cast<bsccs::real>(count);
 		}
 	} else {
 		std::cerr << "BootstrapSelector::getWeights is not yet implemented." << std::endl;
@@ -89,7 +74,8 @@ void BootstrapSelector::getWeights(int batch, std::vector<real>& weights) {
 	}
 }
 
-void BootstrapSelector::getComplement(std::vector<real>& weights) {
+void BootstrapSelector::getComplement(std::vector<bsccs::real>& weights) {
 	std::cerr << "BootstrapSelector::getComplement is not yet implemented." << std::endl;
 	exit(-1);
+}
 }

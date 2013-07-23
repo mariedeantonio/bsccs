@@ -5,6 +5,8 @@
  *      Author: msuchard
  */
 
+
+
 #ifndef CROSSVALIDATIONDRIVER_H_
 #define CROSSVALIDATIONDRIVER_H_
 
@@ -14,14 +16,13 @@
 #include "ccd.h"
 
 #include "AbstractDriver.h"
-
+namespace bsccs {
 class CrossValidationDriver : public AbstractDriver {
 public:
 	CrossValidationDriver(
 			int iGridSize,
 			double iLowerLimit,
-			double iUpperLimit,
-			vector<real>* wtsExclude = NULL);
+			double iUpperLimit);
 
 	virtual ~CrossValidationDriver();
 
@@ -51,7 +52,8 @@ private:
 	int gridSize;
 	double lowerLimit;
 	double upperLimit;
-	vector<real>* weightsExclude;
-};
 
+};
+}
 #endif /* CROSSVALIDATIONDRIVER_H_ */
+

@@ -5,15 +5,19 @@
  *      Author: msuchard
  */
 
+
 #ifndef BOOTSTRAPDRIVER_H_
 #define BOOTSTRAPDRIVER_H_
+
 
 #include <vector>
 
 #include "AbstractDriver.h"
-#include "ModelData.h"
+#include "InputReader.h"
 
-typedef std::vector<real> rvector;
+namespace bsccs {
+
+typedef std::vector<bsccs::real> rvector;
 typedef std::vector<rvector*> rarray;
 typedef	rarray::iterator rarrayIterator;
 
@@ -21,7 +25,7 @@ class BootstrapDriver : public AbstractDriver {
 public:
 	BootstrapDriver(
 			int inReplicates,
-			ModelData* inModelData);
+			InputReader* inReader);
 
 	virtual ~BootstrapDriver();
 
@@ -32,13 +36,14 @@ public:
 
 	virtual void logResults(const CCDArguments& arguments);
 
-	void logResults(const CCDArguments& arguments, std::vector<real>& savedBeta, std::string conditionId);
+	void logResults(const CCDArguments& arguments, std::vector<bsccs::real>& savedBeta, std::string conditionId);
 
 private:
 	const int replicates;
-	ModelData* modelData;
+	InputReader* reader;
 	const int J;
 	rarray estimates;
 };
-
+}
 #endif /* BOOTSTRAPDRIVER_H_ */
+

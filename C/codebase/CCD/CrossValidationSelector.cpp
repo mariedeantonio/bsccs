@@ -12,12 +12,12 @@
 
 #include "CrossValidationSelector.h"
 
+namespace bsccs {
 CrossValidationSelector::CrossValidationSelector(
 		int inFold,
 		std::vector<int>* inIds,
 		SelectorType inType,
-		long inSeed,
-		std::vector<real>* wtsExclude) : AbstractSelector(inIds, inType, inSeed), fold(inFold) {
+		long inSeed) : AbstractSelector(inIds, inType, inSeed), fold(inFold) {
 
 	// Calculate interval starts
 	intervalStart.reserve(fold + 1);
@@ -46,14 +46,13 @@ CrossValidationSelector::CrossValidationSelector(
 	for (int i = 0; i < N; ++i) {
 		permutation.push_back(i);
 	}
-	weightsExclude = wtsExclude;
 }
 
 CrossValidationSelector::~CrossValidationSelector() {
 	// Do nothing
 }
 
-void CrossValidationSelector::getWeights(int batch, std::vector<real>& weights) {
+void CrossValidationSelector::getWeights(int batch, std::vector<bsccs::real>& weights) {
 	if (weights.size() != K) {
 		weights.resize(K);
 	}
@@ -85,60 +84,15 @@ void CrossValidationSelector::getWeights(int batch, std::vector<real>& weights) 
 	}
 }
 
-void CrossValidationSelector::getComplement(std::vector<real>& weights) {
-	for(std::vector<real>::iterator it = weights.begin(); it != weights.end(); it++) {
+void CrossValidationSelector::getComplement(std::vector<bsccs::real>& weights) {
+	for(std::vector<bsccs::real>::iterator it = weights.begin(); it != weights.end(); it++) {
 		*it = 1 - *it;
 	}
 }
 
 void CrossValidationSelector::permute() {
-
-	// Do random shuffle
 	if (!deterministic) {
 		std::random_shuffle(permutation.begin(), permutation.end());
 	}
-
-	if(weightsExclude){
-		vector<int> permutationCopy = permutation;
-		int nExcluded = 0;
-		for(int i = 0; i < (int)weightsExclude->size(); i++){
-			if(weightsExclude->at(i) != 0.0){
-				nExcluded++;
-			}
-		}
-		int fraction = nExcluded / fold;
-		int extra = nExcluded - fraction * fold;
-
-		vector<int> nExcludedPerFold;
-		for(int i = 0; i < fold; i++){
-			if(i < extra){
-				nExcludedPerFold.push_back(fraction + 1);
-			}
-			else{
-				nExcludedPerFold.push_back(fraction);
-			}
-		}
-		int foldIncluded = 0;
-		int foldExcluded = 0;
-		int nextExcluded = intervalStart[0];
-		int nextIncluded = intervalStart[0] + nExcludedPerFold[0];
-		for(int i = 0; i < permutationCopy.size(); i++){
-			if(weightsExclude->at(permutationCopy[i]) == 0.0){
-				permutation[nextIncluded] = permutationCopy[i];
-				nextIncluded++;
-				if(nextIncluded == intervalStart[foldIncluded + 1]){
-					nextIncluded = intervalStart[foldIncluded + 1] + nExcludedPerFold[foldIncluded + 1];
-					foldIncluded++;
-				}
-			}
-			else{
-				permutation[nextExcluded] = permutationCopy[i];
-				nextExcluded++;
-				if(nextExcluded == intervalStart[foldExcluded] + nExcludedPerFold[foldExcluded]){
-					nextExcluded = intervalStart[foldExcluded + 1];
-					foldExcluded++;
-				}
-			}
-		}
-	}
+}
 }

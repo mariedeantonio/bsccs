@@ -9,19 +9,12 @@
 #define CCD_H_
 
 #include <time.h>
-
-#ifdef _WIN32
-#include <stddef.h>
-#include <io.h>
-#include <stdlib.h>
-#include <winsock.h>
-#include <stdio.h>
-#else
 #include <sys/time.h>
-#endif
 
-#include "ModelSpecifics.h"
 #include "CyclicCoordinateDescent.h"
+
+//using namespace bsccs;
+namespace bsccs {
 
 struct CCDArguments {
 
@@ -29,7 +22,6 @@ struct CCDArguments {
 	std::string inFileName;
 	std::string outFileName;
 	std::string fileFormat;
-	std::string outputFormat;
 	bool useGPU;
 	bool useBetterGPU;
 	int deviceNumber;
@@ -38,9 +30,14 @@ struct CCDArguments {
 	bool useNormalPrior;
 	bool hyperPriorSet;
 	int maxIterations;
-	std::string convergenceTypeString;
 	int convergenceType;
 	long seed;
+
+	// Needed to test balance of beta and sigma MCMC tshaddox
+
+	double betaAmount;
+	double sigmaAmount;
+	std::string MCMCFileName;
 
 	// Needed for cross-validation
 	bool doCrossValidation;
@@ -57,12 +54,9 @@ struct CCDArguments {
 	bool reportRawEstimates;
 	int replicates;
 	std::string bsFileName;
-	bool doPartial;
 
 	// Needed for model specification
-//	bool doLogisticRegression;
-	int modelType;
-	std::string modelName;
+	bool doLogisticRegression;
 };
 
 
@@ -76,29 +70,22 @@ void parseCommandLine(
 		CCDArguments& arguments);
 
 double initializeModel(
-		ModelData** modelData,
+		InputReader** reader,
 		CyclicCoordinateDescent** ccd,
-//		ModelSpecifics<DefaultModel>** model,
-		AbstractModelSpecifics** model,
 		CCDArguments &arguments);
 
 double fitModel(
 		CyclicCoordinateDescent *ccd,
 		CCDArguments &arguments);
 
-double predictModel(
-		CyclicCoordinateDescent *ccd,
-		ModelData *modelData,
-		CCDArguments &arguments);
-
 double runCrossValidation(
 		CyclicCoordinateDescent *ccd,
-		ModelData *modelData,
+		InputReader *reader,
 		CCDArguments &arguments);
 
 double runBoostrap(
 		CyclicCoordinateDescent *ccd,
-		ModelData *modelData,
+		InputReader *reader,
 		CCDArguments &arguments);
 
 double calculateSeconds(
@@ -107,5 +94,7 @@ double calculateSeconds(
 
 void setDefaultArguments(
 		CCDArguments &arguments);
+
+}
 
 #endif /* CCD_H_ */

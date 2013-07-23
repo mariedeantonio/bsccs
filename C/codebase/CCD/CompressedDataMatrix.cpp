@@ -8,24 +8,82 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
-#include <numeric>
 #include <vector>
 
 #include "CompressedDataMatrix.h"
 
-CompressedDataMatrix::CompressedDataMatrix() : nCols(0), nRows(0), nEntries(0) {
+namespace bsccs {
+
+CompressedDataMatrix::CompressedDataMatrix() {
 	// Do nothing
 }
 
+CompressedDataMatrix::CompressedDataMatrix(const char* fileName) {
+	ifstream in(fileName);	
+	if (!in) {
+		cerr << "Unable to open " << fileName << endl;
+		exit(-1);
+	}
+	
+	// Read header line
+	char buffer[256];
+	in.getline(buffer, 256);
+	
+	// Read matrix dimensions
+	in >> nRows >> nCols >> nEntries;
+	
+//	// Allocate some memory
+//	columns = std::vector<int_vector>(nCols);
+//	for (int j = 0; j < nCols; j++) {
+//		columns[j] = int_vector(); // Create empty list
+//	}
+	allocateMemory(nCols);
+	
+	// Read each matrix entry
+	for (int k = 0; k < nEntries; k++) {
+		int i, j;
+		double x;
+		in >> i >> j >> x;
+		i--; // C uses 0-indices, MatrixMarket uses 1-indices
+		j--;	
+		if (x != 1) {
+			cerr << "Non-zero/one element in matrix." << endl;
+			exit(-1);
+		}
+		columns[j]->push_back(i);
+	}
+	
+	// Sort all columns, just in case MatrixMarket file is corrupted
+	for (int j = 0; j < nCols; j++) {
+		std::sort(columns[j]->begin(), columns[j]->end());
+	}
+		
+#ifdef DEBUG
+	cerr << "Read in sparse indicator matrix from " << fileName << endl;
+	cerr << "Spare matrix dimensions = " << nRows << " x " << nCols << endl;
+	cerr << "Number of non-zero elements = " << nEntries << endl;	
+#endif
+	
+}
+
 CompressedDataMatrix::~CompressedDataMatrix() {
-	typedef std::vector<CompressedDataColumn*>::iterator CIterator;
-	for (CIterator it = allColumns.begin(); it != allColumns.end(); ++it) {
-		delete *it;
+	typedef std::vector<real_vector*>::iterator RIterator;
+	for (RIterator it = data.begin(); it != data.end(); ++it) {
+		if (*it) {
+			delete *it;
+		}
+	}
+
+	typedef std::vector<int_vector*>::iterator IIterator;
+	for (IIterator it = columns.begin(); it != columns.end(); ++it) {
+		if (*it) {
+			delete *it;
+		}
 	}
 }
 
-real CompressedDataMatrix::sumColumn(int column) {
-	real sum = 0.0;
+bsccs::real CompressedDataMatrix::sumColumn(int column) {
+	bsccs::real sum = 0.0;
 	if (getFormatType(column) == DENSE) {
 		cerr << "Not yet implemented (DENSE)." << endl;
 		exit(-1);
@@ -33,16 +91,12 @@ real CompressedDataMatrix::sumColumn(int column) {
 		cerr << "Not yet implemented (SPARSE)." << endl;
 		exit(-1);
 	} else { // is indiciator
-		sum = allColumns[column]->getNumberOfEntries();
+		sum = columns[column]->size();
 	}
 	return sum;
 }
 
 void CompressedDataMatrix::printColumn(int column) {
-#if 1
-	cerr << "Not yet implemented.\n";
-	exit(-1);
-#else
 	real_vector values;
 	if (getFormatType(column) == DENSE) {
 		values.assign(data[column]->begin(), data[column]->end());
@@ -61,246 +115,115 @@ void CompressedDataMatrix::printColumn(int column) {
 		}
 	}
 	printVector(values.data(), values.size());
-#endif
 }
+
+//template <class T>
+//void CompressedDataMatrix::printVector(T values, const int size) {
+//	cout << "[" << values[0];
+//	for (int i = 1; i < size; ++i) {
+//		cout << " " << values[i];
+//	}
+//	cout << "]" << endl;
+//}
+
+
 
 void CompressedDataMatrix::convertColumnToSparse(int column) {
-	allColumns[column]->convertColumnToSparse();
-}
-
-void CompressedDataMatrix::convertColumnToDense(int column) {
-	allColumns[column]->convertColumnToDense(nRows);
-}
-
-int CompressedDataMatrix::getNumberOfRows(void) const {
-	return nRows;
-}
-
-int CompressedDataMatrix::getNumberOfColumns(void) const {
-	return nCols;
-}
-
-int CompressedDataMatrix::getNumberOfEntries(int column) const {
-	return allColumns[column]->getNumberOfEntries();
-}
-
-int* CompressedDataMatrix::getCompressedColumnVector(int column) const {
-	return allColumns[column]->getColumns();
-}
-
-real* CompressedDataMatrix::getDataVector(int column) const {
-	return allColumns[column]->getData();
-}
-
-FormatType CompressedDataMatrix::getFormatType(int column) const {
-	return allColumns[column]->getFormatType();
-}
-
-void CompressedDataColumn::fill(real_vector& values, int nRows) {
-	values.resize(nRows);
-	if (formatType == DENSE) {
-			values.assign(data->begin(), data->end());
-		} else {
-			bool isSparse = formatType == SPARSE;
-			values.assign(nRows, 0.0);
-			int* indicators = getColumns();
-			int n = getNumberOfEntries();
-			for (int i = 0; i < n; ++i) {
-				const int k = indicators[i];
-				if (isSparse) {
-					values[k] = data->at(i);
-				} else {
-					values[k] = 1.0;
-				}
-			}
-		}
-}
-
-CompressedDataMatrix* CompressedDataMatrix::transpose() {
-	CompressedDataMatrix* matTranspose = new CompressedDataMatrix();
-
-	matTranspose->nRows = this->getNumberOfColumns();
-	int numCols = this->getNumberOfRows();
-
-	bool flagDense = false;
-	bool flagIndicator = false;
-	bool flagSparse = false;
-	for (int i = 0; i < nCols; i++) {
-		FormatType thisFormatType = this->allColumns[i]->getFormatType();
-		if (thisFormatType == DENSE)
-			flagDense = true;
-		if (thisFormatType == INDICATOR)
-			flagIndicator = true;
-	}
-
-	if (flagIndicator && flagDense) {
-		flagSparse = true;
-		flagIndicator = flagDense = false;
-	}
-	for (int k = 0; k < numCols; k++) {
-		if (flagIndicator) {
-			matTranspose->push_back(INDICATOR);
-		} else if (flagDense) {
-			matTranspose->push_back(DENSE);
-		} else {
-			matTranspose->push_back(SPARSE);
-		}
-	}
-
-	for (int i = 0; i < matTranspose->nRows; i++) {
-		FormatType thisFormatType = this->allColumns[i]->getFormatType();
-		if (thisFormatType == INDICATOR || thisFormatType == SPARSE) {
-			int rows = this->getNumberOfEntries(i);
-			for (int j = 0; j < rows; j++) {
-				if (thisFormatType == SPARSE)
-					matTranspose->allColumns[this->getCompressedColumnVector(i)[j]]->add_data(
-							i, this->getDataVector(i)[j]);
-				else
-					matTranspose->allColumns[this->getCompressedColumnVector(i)[j]]->add_data(
-							i, 1.0);
-			}
-		} else {
-			for (int j = 0; j < nRows; j++) {
-				matTranspose->getColumn(j).add_data(i,
-						this->getDataVector(i)[j]);
-			}
-		}
-	}
-
-	return matTranspose;
-}
-
-// TODO Fix massive copying
-void CompressedDataMatrix::addToColumnVector(int column, int_vector addEntries) const{
-	allColumns[column]->addToColumnVector(addEntries);
-}
-
-void CompressedDataMatrix::removeFromColumnVector(int column, int_vector removeEntries) const{
-	allColumns[column]->removeFromColumnVector(removeEntries);
-}
-
-
-void CompressedDataMatrix::getDataRow(int row, real* x) const {
-	for(int j = 0; j < nCols; j++)
-	{
-		if(this->allColumns[j]->getFormatType() == DENSE)
-			x[j] = this->getDataVector(j)[row];
-		else{
-			x[j] = 0.0;
-			int* col = this->getCompressedColumnVector(j);
-			for(int i = 0; i < this->allColumns[j]->getNumberOfEntries(); i++){
-				if(col[i] == row){
-					x[j] = 1.0;
-					break;
-				}
-				else if(col[i] > row)
-					break;
-			}
-		}
-	}
-}
-
-void CompressedDataMatrix::setNumberOfColumns(int nColumns) {
-	nCols = nColumns;
-}
-// End TODO
-
-void CompressedDataColumn::printColumn(int nRows) {
-	real_vector values;
-	fill(values, nRows);
-	printVector(values.data(), values.size());
-}
-
-real CompressedDataColumn::sumColumn(int nRows) {
-	real_vector values;
-	fill(values, nRows);
-	return std::accumulate(values.begin(), values.end(), static_cast<real>(0.0));
-}
-
-void CompressedDataColumn::convertColumnToSparse(void) {
-	if (formatType == SPARSE) {
+	if (getFormatType(column) == SPARSE) {
 		return;
 	}
-	if (formatType == DENSE) {
+	if (getFormatType(column) == DENSE) {
 		fprintf(stderr, "Format not yet support.\n");
 		exit(-1);
 	}
 
-	if (data == NULL) {
-		data = new real_vector();
+	while (data.size() <= column) {
+		data.push_back(NULL);
+	}
+	if (data[column] == NULL) {
+		data[column] = new real_vector();
 	}
 
-	const real value = 1.0;
-	data->assign(getNumberOfEntries(), value);
-	formatType = SPARSE;
+#if 1
+	const bsccs::real value = 1.0;
+#else
+	const bsccs::real value = 2.0;
+#endif
+
+	data[column]->assign(nRows, value);
+	formatType[column] = SPARSE;
 }
 
-void CompressedDataColumn::convertColumnToDense(int nRows) {
-	if (formatType == DENSE) {
+void CompressedDataMatrix::convertColumnToDense(int column) {
+	if (getFormatType(column) == DENSE) {
 		return;
 	}
-//	if (formatType == SPARSE) {
-//		fprintf(stderr, "Format not yet support.\n");
-//		exit(-1);
-//	}
+	if (getFormatType(column) == SPARSE) {
+		fprintf(stderr, "Format not yet support.\n");
+		exit(-1);
+	}
 
-	real_vector* oldData = data;	
-	data = new real_vector();
-	
-	data->resize(nRows, static_cast<real>(0));
+	while (data.size() <= column) {
+		data.push_back(NULL);
+	}
+	if (data[column] == NULL) {
+		data[column] = new real_vector();
+	}
+	data[column]->resize(nRows, static_cast<bsccs::real>(0));
 
-	int* indicators = getColumns();
-	int n = getNumberOfEntries();
+	int* indicators = getCompressedColumnVector(column);
+	int n = getNumberOfEntries(column);
 //	int nonzero = 0;
 	for (int i = 0; i < n; ++i) {
 		const int k = indicators[i];
 //		cerr << " " << k;
 //		nonzero++;
 
-		real value = (formatType == SPARSE) ? oldData->at(i) : 1.0;	
-
-		data->at(k) = value;
+#if 1
+		const bsccs::real value = 1.0;
+#else
+		const bsccs::real value = 2.0;
+#endif
+		data[column]->at(k) = value;
 	}
 //	cerr << endl;
 //	cerr << "Non-zero count: " << nonzero << endl;
 //	exit(0);
-	formatType = DENSE;
-	delete columns; columns = NULL;
-	if (oldData) {
-		delete oldData;
+	formatType[column] = DENSE;
+	delete columns[column]; columns[column] = NULL;
+}
+
+int CompressedDataMatrix::getNumberOfRows(void) const {
+	return nRows;
+}
+
+int CompressedDataMatrix::getNumberOfColumns(void) {
+	return nCols;
+}
+
+int CompressedDataMatrix::getNumberOfEntries(int column) const {
+	return columns[column]->size();
+}
+
+int* CompressedDataMatrix::getCompressedColumnVector(int column) const {
+	return const_cast<int*>(&(columns[column]->at(0)));
+}
+
+bsccs::real* CompressedDataMatrix::getDataVector(int column) const {
+	return const_cast<bsccs::real*>(data[column]->data());
+}
+
+void CompressedDataMatrix::allocateMemory(int nCols) {
+	// Allocate some memory
+//	columns = std::vector<int_vector*>(nCols);
+	columns.resize(nCols);
+	for (int j = 0; j < nCols; j++) {
+//		columns[j] = int_vector(); // Create empty list
+		columns[j] = new int_vector();
 	}
 }
 
-// TODO Fix massive copying
-void CompressedDataColumn::addToColumnVector(int_vector addEntries){
-	int lastit = 0;
-
-	for(int i = 0; i < (int)addEntries.size(); i++)
-	{
-		int_vector::iterator it = columns->begin() + lastit;
-        for(; it != columns->end(); it++){
-    		if(*it > addEntries[i]){
-                break;
-            }
-		    lastit++;
-		}
-		columns->insert(it,addEntries[i]);
-	}
+FormatType CompressedDataMatrix::getFormatType(int column) const {
+	return formatType[column];
 }
-
-void CompressedDataColumn::removeFromColumnVector(int_vector removeEntries){
-	int lastit = 0;
-	int_vector::iterator it1 = removeEntries.begin();
-	int_vector::iterator it2 = columns->begin();
-	while(it1 < removeEntries.end() && it2 < columns->end()){
-		if(*it1 < *it2)
-			it1++;
-		else if(*it2 < *it1){
-			it2++;
-		}
-		else{
-			columns->erase(it2);
-			it2 = columns->begin() + lastit;
-		}
-	}
 }

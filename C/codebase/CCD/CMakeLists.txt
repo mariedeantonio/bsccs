@@ -1,39 +1,122 @@
 include_directories(. ${CMAKE_SOURCE_DIR}/codebase)
 
-set(BASE_SOURCE_FILES
+#find_path(GSL_INCLUDE_DIR
+#	NAMES gsl
+#    	DOCS "Location of GSL header file")
+    
+#find_path(MTL_INCLUDE_DIR
+#	NAMES mtl4
+#	DOCS "Location of MTL header file"
+#	PATHS "/Users/msuchard/Documents/Projects")
+#	
+find_path(BOOST_INCLUDE_DIR
+	NAMES boost
+	DOCS "Location of boost header file"
+	PATHS "/Users/tshaddox/Desktop/workspace/boost_1_53_0")
+	
+find_path(EIGEN_INCLUDE_DIR
+	NAMES Eigen
+	DOCS "Location of boost header files"
+	PATHS "/Users/msuchard/Dropbox/Projects/eigen"
+	PATHS "/Users/tshaddox/Desktop/workspace/eigen")
+
+	
+find_path(CUSP_INCLUDE_DIR
+	NAMES cusp
+	DOCS "Location of boost header files"
+	PATHS "/Users/msuchard/Dropbox/Projects/cusplibrary"
+	PATHS "/Users/tshaddox/Downloads/")
+	
+	
+#find_library(GSL_LIBRARY
+#	NAMES gsl
+#	DOCS "Location of GSL library file")
+
+#find_library(GSL_CBLAS_LIBRARY
+#	NAMES gslcblas
+#	DOCS "Location of GSL BLAS library file")
+
+#find_library(CUBLAS_LIBRARY
+#	NAMES cublas
+#	DOCS "Location of CUBLAS library file")
+	
+#if (NOT MTL_INCLUDE_DIR)
+#	message(FATAL_ERROR "MTL header file not found (and required)")
+#endif (NOT MTL_INCLUDE_DIR)
+#
+#if (NOT BOOST_INCLUDE_DIR)
+#	message(FATAL_ERROR "Boost header file not found (and required)")
+#endif (NOT BOOST_INCLUDE_DIR)
+
+#if (NOT GSL_INCLUDE_DIR)
+#   message(FATAL_ERROR "GSL header file not found (and required)")
+#endif (NOT GSL_INCLUDE_DIR)
+
+#if (NOT GSL_LIBRARY)
+#   message(FATAL_ERROR "GSL library not found (and required)")
+#endif (NOT GSL_LIBRARY)
+
+#if (NOT CUBLAS_LIBRARY)
+#   message(FATAL_ERROR "CUBLAS library not found (and required)")
+#endif (NOT CUBLAS_LIBRARY)
+
+#set(MTL_INCLUDE_DIR "${MTL_INCLUDE_DIR}/mtl4")
+
+message(STATUS "Found GSL library: " ${GSL_LIBRARY})
+
+message(STATUS "Found CBLAS library: " ${GSL_CBLAS_LIBRARY})
+
+message(STATUS "Found CUBLAS library: " ${CUBLAS_LIBRARY})
+
+message(STATUS "Found GSL header file in:  " ${GSL_INCLUDE_DIR})
+
+#message(STATUS "Found MTL header file in: " ${MTL_INCLUDE_DIR})
+
+message(STATUS "Found boost header files in: " ${BOOST_INCLUDE_DIR})
+
+message(STATUS "Found CUDA directory files in: " ${CUDA_INCLUDE_DIR})
+
+
+
+
+include_directories(${GSL_INCLUDE_DIR} 
+					${CUDA_INCLUDE_DIR}
+					${MTL_INCLUDE_DIR}
+					${BOOST_INCLUDE_DIR}
+					${EIGEN_INCLUDE_DIR}
+					${CUSP_INCLUDE_DIR}
+					)
+
+set(SOURCE_FILES
+	ccd.cpp
 	CyclicCoordinateDescent.cpp	
 	CompressedDataMatrix.cpp
-	ModelData.cpp
-	io/InputReader.cpp
-	io/SCCSInputReader.cpp
-	io/CLRInputReader.cpp
-	io/RTestInputReader.cpp
-	io/CoxInputReader.cpp
-	io/CCTestInputReader.cpp
-	AbstractModelSpecifics.cpp
+	InputReader.cpp
+	SCCSInputReader.cpp
+	CLRInputReader.cpp
+	RTestInputReader.cpp
+	CCTestInputReader.cpp
 	AbstractDriver.cpp
 	AbstractSelector.cpp
-	ProportionSelector.cpp
 	CrossValidationSelector.cpp
 	CrossValidationDriver.cpp
 	BootstrapSelector.cpp
-	BootstrapDriver.cpp)
-	
-set(CCD_SOURCE_FILES
-    ccd.cpp)
-    
-set(IMPUTE_SOURCE_FILES
-	imputation/ccdimpute.cpp
-	imputation/ImputationPolicy.cpp
-	imputation/ImputeVariables.cpp)   
-	
-add_library(base_bsccs ${BASE_SOURCE_FILES})	
+	BootstrapDriver.cpp
+	SparseRowVector.cpp
+	MCMCDriver.cpp
+	IndependenceSampler.cpp
+	MHRatio.cpp
+	SigmaSampler.cpp
+	CredibleIntervals.cpp
+	Parameter.cpp
+	ModelLikelihood.cpp)
 	
 if(CUDA_FOUND)
-	set(CCD_SOURCE_FILES ${CCD_SOURCE_FILES}
+	set(SOURCE_FILES ${SOURCE_FILES}
 	    GPUCyclicCoordinateDescent.cpp
-	    )
+	    BetterGPU.cpp)
 	add_definitions(-DCUDA)	
+ #	add_definitions(-DCUDA_TRS)
  #	if(APPLE)
  #		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
  #		set(CUDA_64_BIT_DEVICE_CODE OFF)	
@@ -43,15 +126,14 @@ if(CUDA_FOUND)
 	else(APPLE)
 		set(CUDA_NVCC_FLAGS "-arch=sm_20")
 	endif(APPLE)
- 	cuda_add_executable(ccd ${CCD_SOURCE_FILES})
+#	cuda_add_library(ccd-lib ${SOURCE_FILES})
+ 	cuda_add_executable(ccd ${SOURCE_FILES})
  	target_link_libraries(ccd CUDADriver)
+	target_link_libraries(ccd ${BOOST_INCLUDE_LIBRARY})
+	target_link_libraries(ccd ${EIGEN_INCLUDE_LIBRARY})
+	target_link_libraries(ccd CUDARuntime)
 else(CUDA_FOUND)
-	add_executable(ccd ${CCD_SOURCE_FILES})
+	add_executable(ccd ${SOURCE_FILES})
 endif(CUDA_FOUND)
-
-add_executable(ccdimpute ${IMPUTE_SOURCE_FILES})
-
-target_link_libraries(ccd base_bsccs)
-target_link_libraries(ccdimpute base_bsccs)
 
 

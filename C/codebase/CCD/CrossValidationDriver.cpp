@@ -12,15 +12,15 @@
 #include <cstdlib>
 
 #include "CrossValidationDriver.h"
-
+namespace bsccs {
 CrossValidationDriver::CrossValidationDriver(
 			int iGridSize,
 			double iLowerLimit,
-			double iUpperLimit,
-			vector<real>* wtsExclude) : gridSize(iGridSize),
-			lowerLimit(iLowerLimit), upperLimit(iUpperLimit), weightsExclude(wtsExclude) {
+			double iUpperLimit) : gridSize(iGridSize),
+			lowerLimit(iLowerLimit), upperLimit(iUpperLimit) {
 
 	// Do anything???
+
 }
 
 CrossValidationDriver::~CrossValidationDriver() {
@@ -91,7 +91,7 @@ void CrossValidationDriver::drive(
 
 	// TODO Check that selector is type of CrossValidationSelector
 
-	std::vector<real> weights;
+	std::vector<bsccs::real> weights;
 
 	for (int step = 0; step < gridSize; step++) {
 
@@ -100,6 +100,7 @@ void CrossValidationDriver::drive(
 		ccd.setHyperprior(point);
 
 		for (int i = 0; i < arguments.foldToCompute; i++) {
+
 			int fold = i % arguments.fold;
 			if (fold == 0) {
 				selector.permute(); // Permute every full cross-validation rep
@@ -107,27 +108,12 @@ void CrossValidationDriver::drive(
 
 			// Get this fold and update
 			selector.getWeights(fold, weights);
-			if(weightsExclude){
-				for(int j = 0; j < (int)weightsExclude->size(); j++){
-					if(weightsExclude->at(j) == 1.0){
-						weights[j] = 0.0;
-					}
-				}
-			}
 			ccd.setWeights(&weights[0]);
 			std::cout << "Running at " << ccd.getPriorInfo() << " ";
 			ccd.update(arguments.maxIterations, arguments.convergenceType, arguments.tolerance);
 
 			// Compute predictive loglikelihood for this fold
 			selector.getComplement(weights);
-			if(weightsExclude){
-				for(int j = 0; j < (int)weightsExclude->size(); j++){
-					if(weightsExclude->at(j) == 1.0){
-						weights[j] = 0.0;
-					}
-				}
-			}
-
 			double logLikelihood = ccd.getPredictiveLogLikelihood(&weights[0]);
 
 			std::cout << "Grid-point #" << (step + 1) << " at " << point;
@@ -172,4 +158,4 @@ void CrossValidationDriver::findMax(double* maxPoint, double* maxValue) {
 		}
 	}
 }
-
+}

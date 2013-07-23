@@ -8,16 +8,25 @@
 #ifndef CYCLICCOORDINATEDESCENT_H_
 #define CYCLICCOORDINATEDESCENT_H_
 
+
+
+//#include "CUDARuntime/CUSPEngine.h"
+
 #include "CompressedDataMatrix.h"
-#include "ModelData.h"
-#include "AbstractModelSpecifics.h"
+#include "InputReader.h"
+#include "SparseRowVector.h"
+
+
 
 //using namespace std;
+
 using std::cout;
 using std::cerr;
 using std::endl;
 using std::ostream;
 using std::ofstream;
+
+namespace bsccs {
 
 //#define DEBUG
 
@@ -33,12 +42,12 @@ using std::ofstream;
 
 //#define NO_FUSE
 
-
 #ifdef DOUBLE_PRECISION
 	typedef double real;
 #else
 	typedef float real;
 #endif 
+
 
 enum PriorType {
 	LAPLACE = 0,
@@ -46,17 +55,8 @@ enum PriorType {
 };
 
 enum ConvergenceType {
-	GRADIENT,
-	LANGE,
-	MITTAL,
-	ZHANG_OLES
-};
-
-enum ModelType {
-	MSCCS, // multiple self-controlled case series
-	CLR,   // conditional logistic regression
-	LR,    // logistic regression
-	LS     // least squares
+	LANGE = 0,
+	ZHANG_OLES = 1
 };
 
 class CyclicCoordinateDescent {
@@ -74,9 +74,7 @@ public:
 		);
 	
 	CyclicCoordinateDescent(
-			ModelData* modelData,
-			AbstractModelSpecifics& specifics
-//			ModelSpecifics<DefaultModel>& specifics
+			InputReader* reader
 		);
 
 	CyclicCoordinateDescent(
@@ -94,23 +92,15 @@ public:
 	
 	double getLogLikelihood(void);
 
-	double getPredictiveLogLikelihood(real* weights);
-
-	void getPredictiveEstimates(real* y, real* weights) const;
+	double getPredictiveLogLikelihood(bsccs::real* weights);
 
 	double getLogPrior(void);
 	
-	virtual double getObjectiveFunction(int convergenceType);
+	virtual double getObjectiveFunction(void);
 
-	real getBeta(int i);
+	bsccs::real getBeta(int i);
 
 	int getBetaSize(void);
-
-	int getPredictionSize(void) const;
-
-	bool getFixedBeta(int i);
-
-	void setFixedBeta(int i, bool value);
 		
 	void update(int maxIterations, int convergenceType, double epsilon);
 
@@ -121,14 +111,16 @@ public:
 
 	void setPriorType(int priorType);
 
-	void setWeights(real* weights);
+	void setWeights(bsccs::real* weights);
 
 	void setLogisticRegression(bool idoLR);
 
-//	template <typename T>
-	void setBeta(const std::vector<double>& beta);
+	void setUpHessianComponents();
 
-	void setBeta(int i, double beta);
+	void getHessian(vector<vector<bsccs::real> > * blankHessian);
+
+//	template <typename T>
+	virtual void setBeta(const std::vector<double>& beta);
 
 //	void double getHessianComponent(int i, int j);
 
@@ -146,46 +138,62 @@ public:
 	int getLikelihoodCount() const {
 		return likelihoodCount;
 	}
+
+
+	void computeXBeta_GPU_TRS_initialize(void);
+
 		
+	bsccs::real* hBeta; //tshaddox change TEMPORARY for Parameter testing...
+	double sigma2Beta;  //tshaddox change TEMPORARY for Parameter testing...
+
+	//CUSPEngine runCuspTest;
+
+	SparseRowVector hXI_Transpose;
+
+
 protected:
 	
-	AbstractModelSpecifics& modelSpecifics;
-//	ModelSpecifics<DefaultModel>& modelSpecifics;
 //private:
 	
-	void init(bool offset);
+	void init(void);
 	
 	void resetBounds(void);
+
+	void computeXBeta_GPU_TRS(void);
 
 	void computeXBeta(void);
 
 	void saveXBeta(void);
 
-	void computeFixedTermsInLogLikelihood(void);
-	
-	void computeFixedTermsInGradientAndHessian(void);
-
-//	void computeXjY(void);
+	void computeXjEta(void);
 
 	void computeSufficientStatistics(void);
 
 	void updateSufficientStatistics(double delta, int index);
 
-	void computeNumeratorForGradient(int index);
-
 	template <class IteratorType>
 	void incrementNumeratorForGradientImpl(int index);
+
+	void incrementNumeratorForGradientImplHand(int index);
+
+	void computeNumeratorForGradient(int index);
 
 	virtual void computeNEvents(void);
 
 	virtual void updateXBeta(double delta, int index);
 
 	template <class IteratorType>
-	void updateXBetaImpl(real delta, int index);
+	void updateXBetaImpl(bsccs::real delta, int index);
+
+	void updateXBetaImplHand(bsccs::real realDelta, int index);
+
+	virtual void computeRemainingStatistics_GPU_TRS();
 
 	virtual void computeRemainingStatistics(bool skip, int index);
 	
 	virtual void computeRatiosForGradientAndHessian(int index);
+
+//	virtual void computeRatio(int index);
 
 	virtual void computeGradientAndHessian(
 			int index,
@@ -204,18 +212,17 @@ protected:
 						double *hessian);
 
 	template <class IteratorType>
-	inline real computeHessian(
-			real numer, real numer2, real denom,
-			real g, real t);
+	inline bsccs::real computeHessian(
+			bsccs::real numer, bsccs::real numer2, bsccs::real denom,
+			bsccs::real g, bsccs::real t);
 
 	template <class IteratorType>
 	inline void incrementGradientAndHessian(
-			real* gradient, real* hessian,
-			real numer, real numer2, real denom, int nEvents);
-
+			bsccs::real* gradient, bsccs::real* hessian,
+			bsccs::real numer, bsccs::real numer2, bsccs::real denom, int nEvents);
 
 	template <class IteratorType>
-	void axpy(real* y, const real alpha, const int index);
+	void axpy(bsccs::real* y, const bsccs::real alpha, const int index);
 
 	virtual void getDenominators(void);
 
@@ -252,9 +259,9 @@ protected:
 	template <class T>
 	void printVector(T* vector, const int length, ostream &os);
 	
-	double oneNorm(real* vector, const int length);
+	double oneNorm(bsccs::real* vector, const int length);
 	
-	double twoNormSquared(real * vector, const int length); 
+	double twoNormSquared(bsccs::real * vector, const int length);
 	
 	int sign(double x); 
 	
@@ -271,17 +278,20 @@ protected:
 	CompressedDataMatrix* hXI; // K-by-J-indicator matrix
 
 	int* hOffs;  // K-vector
-	real* hY; // K-vector
+	int* hEta; // K-vector
 	int* hNEvents; // K-vector
-//	int* hPid; // N-vector
-	int* hPid;
+	int* hPid; // N-vector
 	int** hXColumnRowIndicators; // J-vector
+
+	vector<int> giVector; // get Gi given patient i
+	vector<vector<int> > kValues;
+	vector<vector<bsccs::real> > numerPidValuesMatrix; // [J][N] Matrix
+	vector<vector<int> > jValuesPerNMatrix; //Sparse matrix for what J's go to each patient
  	
-	real* hBeta;
-	real* hXBeta;
-	real* hXBetaSave;
-	real* hDelta;
-	std::vector<bool> fixBeta;
+
+	bsccs::real* hXBeta;
+	bsccs::real* hXBetaSave;
+	bsccs::real* hDelta;
 
 	int N; // Number of patients
 	int K; // Number of exposure levels
@@ -290,10 +300,10 @@ protected:
 	string conditionId;
 
 	int priorType;
-	double sigma2Beta;
+
 	double lambda;
 
-	real denomNullValue;
+	bsccs::real denomNullValue;
 
 	bool sufficientStatisticsKnown;
 	bool xBetaKnown;
@@ -301,16 +311,16 @@ protected:
 	bool validWeights;
 	bool useCrossValidation;
 	bool doLogisticRegression;
-	real* hWeights;
+	bsccs::real* hWeights;
 
 	// temporary variables
-	real* expXBeta;
-	real* offsExpXBeta;
-	real* denomPid;
-	real* numerPid;
-	real* numerPid2;
-	real* xOffsExpXBeta;
-	real* hXjY;
+	bsccs::real* expXBeta;
+	bsccs::real* offsExpXBeta;
+	bsccs::real* denomPid;
+	bsccs::real* numerPid;
+	bsccs::real* numerPid2;
+	bsccs::real* xOffsExpXBeta;
+	bsccs::real* hXjEta;
 
 	int updateCount;
 	int likelihoodCount;
@@ -320,10 +330,10 @@ protected:
 #endif
 	
 #ifdef NO_FUSE
-	real* wPid;
+	bsccs::real* wPid;
 #endif
 };
 
 double convertVarianceToHyperparameter(double variance);
-
+}
 #endif /* CYCLICCOORDINATEDESCENT_H_ */

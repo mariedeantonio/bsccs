@@ -145,7 +145,6 @@ void setDefaultArguments(CCDArguments &arguments) {
 	arguments.maxIterations = 1000;
 	arguments.inFileName = "default_in";
 	arguments.outFileName = "default_out";
-	arguments.outDirectoryName = "";
 	arguments.hyperPriorSet = false;
 	arguments.hyperprior = 1.0;
 	arguments.tolerance = 1E-6; //5E-4;
@@ -184,8 +183,6 @@ void parseCommandLine(std::vector<std::string>& args,
 		ValueArg<int> maxIterationsArg("", "maxIterations", "Maximum iterations", false, arguments.maxIterations, "int");
 		UnlabeledValueArg<string> inFileArg("inFileName","Input file name", true, arguments.inFileName, "inFileName");
 		UnlabeledValueArg<string> outFileArg("outFileName","Output file name", true, arguments.outFileName, "outFileName");
-		ValueArg<string> outDirectoryNameArg("", "outDirectoryName", "Output directory name", false, arguments.outDirectoryName, "outDirectoryName");
-
 
 		// Prior arguments
 		ValueArg<double> hyperPriorArg("v", "variance", "Hyperprior variance", false, arguments.hyperprior, "real");
@@ -282,7 +279,6 @@ void parseCommandLine(std::vector<std::string>& args,
 		cmd.add(gridCVArg);
 		cmd.add(foldToComputeCVArg);
 		cmd.add(outFile2Arg);
-		cmd.add(outDirectoryNameArg);
 
 		cmd.add(doBootstrapArg);
 //		cmd.add(bsOutFileArg);
@@ -307,7 +303,6 @@ void parseCommandLine(std::vector<std::string>& args,
 
 		arguments.inFileName = inFileArg.getValue();
 		arguments.outFileName = outFileArg.getValue();
-		arguments.outDirectoryName = outDirectoryNameArg.getValue();
 		arguments.tolerance = toleranceArg.getValue();
 		arguments.maxIterations = maxIterationsArg.getValue();
 		arguments.hyperprior = hyperPriorArg.getValue();
@@ -547,16 +542,6 @@ double initializeModel(
 	return sec1;
 }
 
-std::string getPathAndFileName(CCDArguments& arguments, std::string stem) {
-	string fileName;
-	if (arguments.outputFormat.size() == 1) {
-		fileName = arguments.outDirectoryName + arguments.outFileName;
-	} else {
-		fileName = arguments.outDirectoryName + stem + arguments.outFileName;
-	}
-	return fileName;
-}
-
 double predictModel(CyclicCoordinateDescent *ccd, ModelData *modelData, CCDArguments &arguments) {
 
 	struct timeval time1, time2;
@@ -564,7 +549,12 @@ double predictModel(CyclicCoordinateDescent *ccd, ModelData *modelData, CCDArgum
 
 	bsccs::PredictionOutputWriter predictor(*ccd, *modelData);
 
-	string fileName = getPathAndFileName(arguments, "pred_");
+	string fileName;
+	if (arguments.outputFormat.size() == 1) {
+		fileName = arguments.outFileName;
+	} else {
+		fileName = "pred_" + arguments.outFileName;
+	}
 
 	predictor.writeFile(fileName.c_str());
 
@@ -583,7 +573,12 @@ double diagnoseModel(CyclicCoordinateDescent *ccd, ModelData *modelData,
 
 	DiagnosticsOutputWriter diagnostics(*ccd, *modelData);
 
-	string fileName = getPathAndFileName(arguments, "diag_");
+	string fileName;
+	if (arguments.outputFormat.size() == 1) {
+		fileName = arguments.outFileName;
+	} else {
+		fileName = "diag_" + arguments.outFileName;
+	}
 
 	vector<ExtraInformation> extraInfo;
 	extraInfo.push_back(ExtraInformation("load_time",loadTime));
@@ -743,6 +738,12 @@ int main(int argc, char* argv[]) {
 
 	double timeInitialize = initializeModel(&modelData, &ccd, &model, arguments);
 
+//	for (int j = 0; j < ccd->getBetaSize(); ++j) {
+//		if (j != 1) {
+//			ccd->setFixedBeta(j, true);
+//		}
+//	}
+
 	double timeUpdate;
 	if (arguments.doCrossValidation) {
 		timeUpdate = runCrossValidation(ccd, modelData, arguments);
@@ -765,7 +766,12 @@ int main(int argc, char* argv[]) {
 #ifndef MY_RCPP_FLAG
 		// TODO Make into OutputWriter
 		bool withASE = arguments.fitMLEAtMode ||arguments.computeMLE;
-		string fileName = getPathAndFileName(arguments, "est_");
+		string fileName;
+		if (arguments.outputFormat.size() == 1) {
+			fileName = arguments.outFileName;
+		} else {
+			fileName = "est_" + arguments.outFileName;
+		}
 		ccd->logResults(fileName.c_str(), withASE);
 #endif
 	}
